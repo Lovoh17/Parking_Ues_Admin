@@ -1,0 +1,200 @@
+{% extends 'base.html' %}
+{% block content %}
+<style>
+    .espacio-card {
+        border-radius: var(--border-radius);
+        box-shadow: var(--shadow-light);
+        transition: var(--transition);
+        border: 2px solid var(--gris-plata);
+        height: 100%;
+    }
+    
+    .espacio-card:hover {
+        box-shadow: var(--shadow-medium);
+        transform: translateY(-3px);
+    }
+    
+    .espacio-card.publico {
+        border-color: var(--primary-color);
+    }
+    
+    .espacio-card.privado {
+        border-color: var(--azul-noche);
+    }
+    
+    .espacio-disponible {
+        background-color: var(--crema-claro);
+    }
+    
+    .espacio-ocupado {
+        background-color: var(--gris-claro);
+    }
+    
+    .badge-disponible {
+        background-color: var(--primary-color);
+        color: white;
+    }
+    
+    .badge-ocupado {
+        background-color: var(--gris-plomo);
+        color: white;
+    }
+    
+    .card-header-publico {
+        background-color: var(--primary-color);
+    }
+    
+    .card-header-privado {
+        background-color: var(--azul-noche);
+    }
+    
+    .btn-actualizar {
+        background-color: var(--primary-color);
+        color: white;
+        border: none;
+    }
+    
+    .btn-actualizar:hover {
+        background-color: var(--secondary-color);
+    }
+    
+    .titulo-seccion {
+        color: var(--primary-color);
+        border-bottom: 2px solid var(--dorado);
+        padding-bottom: 8px;
+    }
+    
+    .info-ocupacion {
+        background-color: var(--light-gray);
+        border-radius: var(--border-radius);
+        padding: 8px;
+        margin-top: 10px;
+    }
+</style>
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="display-6 fw-bold titulo-seccion mb-2">
+                        <i class="fas fa-parking me-3"></i>Gestión de Espacios de Parqueo UES
+                    </h1>
+                    <p class="text-muted mb-0">Estado actual de los espacios disponibles</p>
+                </div>
+                <div>
+                    <button class="btn btn-actualizar" onclick="actualizarEspacios()">
+                        <i class="fas fa-sync-alt me-2"></i>Actualizar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if error %}
+    <div class="alert alert-danger">{{ error }}</div>
+    {% endif %}
+
+    <!-- Espacios Públicos -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header card-header-publico">
+                    <h5 class="mb-0"><i class="fas fa-university me-2"></i>Espacios Públicos</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for espacio in espacios %}
+                        {% if espacio.tipo == 'publico' %}
+                        <div class="col-md-3 mb-4">
+                            <div class="card espacio-card publico {% if espacio.disponible %}espacio-disponible{% else %}espacio-ocupado{% endif %}">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title">Espacio {{ espacio.numero }}</h5>
+                                    <span class="badge {% if espacio.disponible %}badge-disponible{% else %}badge-ocupado{% endif %}">
+                                        {% if espacio.disponible %}DISPONIBLE{% else %}OCUPADO{% endif %}
+                                    </span>
+                                    
+                                    {% if not espacio.disponible %}
+                                    <div class="info-ocupacion mt-3">
+                                        <div class="mb-2">
+                                            <i class="fas fa-car me-2"></i>
+                                            <strong>Placa:</strong> {{ espacio.placa|default:"-" }}
+                                        </div>
+                                        <div>
+                                            <i class="fas fa-clock me-2"></i>
+                                            <strong>Desde:</strong> {{ espacio.hora_ocupacion|default:"-" }}
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                <div class="card-footer bg-transparent border-top">
+                                    <small class="text-muted">
+                                        <i class="fas fa-history me-1"></i>
+                                        {{ espacio.ultima_actualizacion|default:"-" }}
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Espacios Privados -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header card-header-privado">
+                    <h5 class="mb-0"><i class="fas fa-lock me-2"></i>Espacios Privados</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for espacio in espacios %}
+                        {% if espacio.tipo == 'privado' %}
+                        <div class="col-md-3 mb-4">
+                            <div class="card espacio-card privado {% if espacio.disponible %}espacio-disponible{% else %}espacio-ocupado{% endif %}">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title">Espacio {{ espacio.numero }}</h5>
+                                    <span class="badge {% if espacio.disponible %}badge-disponible{% else %}badge-ocupado{% endif %}">
+                                        {% if espacio.disponible %}DISPONIBLE{% else %}OCUPADO{% endif %}
+                                    </span>
+                                    
+                                    {% if not espacio.disponible %}
+                                    <div class="info-ocupacion mt-3">
+                                        <div class="mb-2">
+                                            <i class="fas fa-car me-2"></i>
+                                            <strong>Placa:</strong> {{ espacio.placa|default:"-" }}
+                                        </div>
+                                        <div>
+                                            <i class="fas fa-clock me-2"></i>
+                                            <strong>Desde:</strong> {{ espacio.hora_ocupacion|default:"-" }}
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                <div class="card-footer bg-transparent border-top">
+                                    <small class="text-muted">
+                                        <i class="fas fa-history me-1"></i>
+                                        {{ espacio.ultima_actualizacion|default:"-" }}
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function actualizarEspacios() {
+    window.location.reload();
+}
+</script>
+{% endblock %}

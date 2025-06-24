@@ -1,0 +1,136 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'listar_usuarios' %}">Usuarios</a></li>
+                    <li class="breadcrumb-item active">
+                        {% if modo_edicion %}Editar{% else %}Nuevo{% endif %} Usuario
+                    </li>
+                </ol>
+            </nav>
+            
+            <h1 class="display-6 fw-bold text-primary-custom mb-3">
+                <i class="fas fa-user-edit me-3"></i>
+                {% if modo_edicion %}Editar Usuario{% else %}Crear Nuevo Usuario{% endif %}
+            </h1>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        {% if messages %}
+                        <div class="mb-4">
+                            {% for message in messages %}
+                            <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %}">
+                                {{ message }}
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="username" class="form-label">Nombre de usuario*</label>
+                                <input type="text" class="form-control" id="username" name="username" 
+                                       value="{{ usuario.username }}" required
+                                       {% if modo_edicion %}readonly{% endif %}>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="email" class="form-label">Email*</label>
+                                <input type="email" class="form-control" id="email" name="email" 
+                                       value="{{ usuario.email }}" required>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="nombre_completo" class="form-label">Nombre completo*</label>
+                            <input type="text" class="form-control" id="nombre_completo" name="nombre_completo" 
+                                   value="{{ usuario.nombre_completo }}" required>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="role" class="form-label">Rol*</label>
+                                <select class="form-select" id="role" name="role" required>
+                                    {% for rol in roles %}
+                                    <option value="{{ rol }}" 
+                                        {% if usuario.role == rol %}selected{% endif %}>
+                                        {{ rol|title }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Estado</label>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="activo" name="activo"
+                                           {% if usuario.activo or not modo_edicion %}checked{% endif %}>
+                                    <label class="form-check-label" for="activo">
+                                        Usuario activo
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="telefono" class="form-label">Teléfono</label>
+                                <input type="text" class="form-control" id="telefono" name="telefono" 
+                                       value="{{ usuario.telefono }}">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="direccion" class="form-label">Dirección</label>
+                                <input type="text" class="form-control" id="direccion" name="direccion" 
+                                       value="{{ usuario.direccion }}">
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Permisos especiales</label>
+                            <div class="row">
+                                {% for permiso in permisos_disponibles %}
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" 
+                                               id="permiso_{{ permiso }}" name="permisos" 
+                                               value="{{ permiso }}"
+                                               {% if permiso in usuario.permisos %}checked{% endif %}>
+                                        <label class="form-check-label" for="permiso_{{ permiso }}">
+                                            {{ permiso }}
+                                        </label>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label for="notas" class="form-label">Notas adicionales</label>
+                            <textarea class="form-control" id="notas" name="notas" rows="3">{{ usuario.notas }}</textarea>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between">
+                            <a href="{% if modo_edicion %}{% url 'detalle_usuario' usuario.username %}{% else %}{% url 'listar_usuarios' %}{% endif %}" 
+                               class="btn btn-outline-secondary">
+                                Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                {% if modo_edicion %}Actualizar Usuario{% else %}Crear Usuario{% endif %}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

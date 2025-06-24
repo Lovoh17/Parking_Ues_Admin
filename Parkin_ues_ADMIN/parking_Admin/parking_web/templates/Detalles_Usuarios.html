@@ -1,0 +1,191 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<style>
+    .user-profile-card {
+        border-radius: var(--border-radius);
+        box-shadow: var(--shadow-medium);
+        border: 1px solid var(--gris-plata);
+    }
+    
+    .profile-header {
+        background-color: var(--primary-color);
+        color: white;
+        border-radius: var(--border-radius) var(--border-radius) 0 0;
+    }
+    
+    .profile-avatar {
+        width: 120px;
+        height: 120px;
+        object-fit: cover;
+        border: 3px solid white;
+        box-shadow: var(--shadow-light);
+    }
+    
+    .avatar-placeholder {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 3rem;
+        background-color: var(--secondary-color);
+        color: white;
+    }
+    
+    .badge-admin {
+        background-color: var(--primary-color);
+    }
+    
+    .badge-gerente {
+        background-color: var(--azul-noche);
+    }
+    
+    .badge-client {
+        background-color: var(--gris-plomo);
+    }
+    
+    .info-card {
+        border-left: 3px solid var(--primary-color);
+    }
+    
+    .info-label {
+        color: var(--primary-color);
+        font-weight: 600;
+    }
+</style>
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'listar_usuarios' %}">Usuarios</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Detalles</li>
+                </ol>
+            </nav>
+            
+            <div class="d-flex justify-content-between align-items-center">
+                <h1 class="display-6 fw-bold text-primary-custom mb-0">
+                    <i class="fas fa-user-circle me-3"></i>Detalles de Usuario
+                </h1>
+                <a href="{% url 'listar_usuarios' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Volver
+                </a>
+            </div>
+        </div>
+    </div>
+
+    {% if error %}
+    <div class="alert alert-danger">{{ error }}</div>
+    {% endif %}
+
+    {% if usuario %}
+    <div class="row">
+        <div class="col-lg-4">
+            <div class="card user-profile-card mb-4">
+                <div class="profile-header p-4 text-center">
+                    {% if usuario.foto_perfil %}
+                    <img src="{{ usuario.foto_perfil }}" alt="{{ usuario.username }}" 
+                         class="profile-avatar rounded-circle mb-3">
+                    {% else %}
+                    <div class="profile-avatar rounded-circle mx-auto mb-3 avatar-placeholder">
+                        {{ usuario.username|first|upper }}
+                    </div>
+                    {% endif %}
+                    
+                    <h3>{{ usuario.nombre_completo }}</h3>
+                    <span class="badge 
+                        {% if usuario.rol == 'Admin' %}badge-admin
+                        {% elif usuario.rol == 'Gerente' %}badge-gerente
+                        {% else %}badge-client{% endif %}">
+                        {{ usuario.rol }}
+                    </span>
+                </div>
+                
+                <div class="card-body">
+                    <div class="d-flex justify-content-center gap-3 mb-4">
+                        {% if usuario.activo %}
+                        <span class="badge bg-success">Activo</span>
+                        {% else %}
+                        <span class="badge bg-warning text-dark">Inactivo</span>
+                        {% endif %}
+                        
+                        <a href="{% url 'editar_usuario' usuario.username%}" class="btn btn-sm btn-primary">
+                            <i class="fas fa-edit me-1"></i>Editar
+                        </a>
+                    </div>
+                    
+                    <hr>
+                    
+                    <div class="mb-3">
+                        <h5 class="text-primary-custom">
+                            <i class="fas fa-info-circle me-2"></i>Información Básica
+                        </h5>
+                        
+                        <div class="info-card p-3 mt-3">
+                            <p><span class="info-label">Usuario:</span> {{ usuario.username }}</p>
+                            <p><span class="info-label">Email:</span> {{ usuario.email }}</p>
+                            <p><span class="info-label">Teléfono:</span> {{ usuario.telefono }}</p>
+                            <p><span class="info-label">Dirección:</span> {{ usuario.direccion }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-8">
+            <div class="card mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="fas fa-history me-2"></i>Actividad</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><span class="info-label">Fecha de registro:</span> 
+                                {{ usuario.fecha_registro|date:"d/m/Y" }}</p>
+                            <p><span class="info-label">Último login:</span> 
+                                {{ usuario.ultimo_login|date:"d/m/Y H:i" }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><span class="info-label">Estado:</span> 
+                                {% if usuario.activo %}Activo{% else %}Inactivo{% endif %}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="fas fa-user-shield me-2"></i>Permisos</h5>
+                </div>
+                <div class="card-body">
+                    {% if usuario.permisos %}
+                    <div class="d-flex flex-wrap gap-2">
+                        {% for permiso in usuario.permisos %}
+                        <span class="badge bg-primary">{{ permiso }}</span>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-muted">No hay permisos especiales asignados</p>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="fas fa-sticky-note me-2"></i>Notas</h5>
+                </div>
+                <div class="card-body">
+                    {% if usuario.notas %}
+                    <p>{{ usuario.notas }}</p>
+                    {% else %}
+                    <p class="text-muted">No hay notas adicionales</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="alert alert-warning">No se encontró información del usuario</div>
+    {% endif %}
+</div>
+{% endblock %}

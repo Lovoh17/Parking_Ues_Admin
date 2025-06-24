@@ -1,0 +1,91 @@
+{% extends 'base_admin.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="display-6 fw-bold text-primary-custom mb-2">
+                        <i class="fas fa-user-cog me-3"></i>Mi Perfil
+                    </h1>
+                    <p class="text-muted mb-0">Administra tu información personal</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        {% if profile.foto_perfil %}
+                            <img src="{{ profile.foto_perfil }}" 
+                                 class="rounded-circle shadow" 
+                                 width="150" height="150" 
+                                 alt="Foto de perfil">
+                        {% else %}
+                            <div class="avatar-placeholder rounded-circle d-inline-flex align-items-center justify-content-center bg-primary text-white" 
+                                 style="width: 150px; height: 150px; font-size: 48px;">
+                                {{ profile.username|first|upper }}
+                            </div>
+                        {% endif %}
+                    </div>
+                    <h4 class="mb-1">{{ profile.nombre }} {{ profile.apellido }}</h4>
+                    <p class="text-muted mb-3">@{{ profile.username }}</p>
+                    <p class="small text-muted mb-0">
+                        <i class="fas fa-circle text-success me-2"></i>
+                        Administrador
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-body">
+                    <form method="post" id="profileForm">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="nombre" class="form-label">Nombre</label>
+                                <input type="text" class="form-control" id="nombre" 
+                                       name="nombre" value="{{ profile.nombre }}" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="apellido" class="form-label">Apellido</label>
+                                <input type="text" class="form-control" id="apellido" 
+                                       name="apellido" value="{{ profile.apellido }}" required>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label for="username" class="form-label">Usuario</label>
+                                <input type="text" class="form-control" id="username" 
+                                       value="{{ profile.username }}" disabled>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="email" class="form-label">Correo Electrónico</label>
+                                <input type="email" class="form-control" id="email" 
+                                       name="email" value="{{ profile.email }}" required>
+                            </div>
+                            
+                            <div class="col-12">
+                                <hr class="my-4">
+                                <div class="d-flex justify-content-end gap-2">
+                                    <a href="{% url 'cambiar_password' %}" class="btn btn-outline-secondary">
+                                        <i class="fas fa-key me-2"></i>Cambiar Contraseña
+                                    </a>
+                                    <button type="submit" class="btn btn-primary px-4">
+                                        <i class="fas fa-save me-2"></i>Actualizar Perfil
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

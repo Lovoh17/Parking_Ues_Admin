@@ -1,0 +1,444 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Indicador de conectividad -->
+    <div id="connectivity-status" class="connectivity-status d-none">
+        <i class="fas fa-wifi me-2"></i>
+        <span id="status-text">Verificando...</span>
+    </div>
+
+    <!-- Alerta modo offline -->
+    {% if modo_offline %}
+    <div class="alert alert-warning alert-dismissible fade show" role="alert">
+        <i class="fas fa-exclamation-triangle me-2"></i>
+        <strong>Modo Offline:</strong> Trabajando con datos locales. Los cambios se sincronizarán cuando se restablezca la conexión.
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endif %}
+
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="display-6 fw-bold text-primary-custom mb-2">
+                        <i class="fas fa-users me-3"></i>Gestión de Usuarios
+                    </h1>
+                    <p class="text-muted mb-0">Administración de cuentas de usuario del sistema</p>
+                    <!-- Estadísticas -->
+                    {% if stats %}
+                    <div class="mt-2">
+                        <span class="badge bg-info me-2">Total: {{ stats.total }}</span>
+                        <span class="badge bg-success me-2">Activos: {{ stats.activos }}</span>
+                        <span class="badge bg-warning me-2">Inactivos: {{ stats.inactivos }}</span>
+                        {% if stats.filtrados != stats.total %}
+                        <span class="badge bg-secondary">Filtrados: {{ stats.filtrados }}</span>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="d-flex gap-2">
+                    <!-- Botón de sincronización -->
+                    <button id="sync-btn" class="btn btn-outline-primary" title="Sincronizar datos">
+                        <i id="sync-icon" class="fas fa-sync-alt me-2"></i>Sincronizar
+                    </button>
+                    <a href="{% url 'nuevo_usuario' %}" class="btn btn-success">
+                        <i class="fas fa-user-plus me-2"></i>Nuevo Usuario
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <form method="get" class="row g-3" id="filter-form">
+                        <div class="col-md-4">
+                            <label for="busqueda" class="form-label">Buscar</label>
+                            <input type="text" class="form-control" id="busqueda" name="busqueda" 
+                                   placeholder="Nombre o usuario..." value="{{ filtros.busqueda }}">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="rol" class="form-label">Rol</label>
+                            <select class="form-select" id="rol" name="rol">
+                                <option value="todos" {% if filtros.rol == 'todos' %}selected{% endif %}>Todos los roles</option>
+                                {% for rol in roles %}
+                                <option value="{{ rol }}" {% if filtros.rol == rol %}selected{% endif %}>{{ rol }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="estado" class="form-label">Estado</label>
+                            <select class="form-select" id="estado" name="estado">
+                                <option value="todos" {% if filtros.estado == 'todos' %}selected{% endif %}>Todos</option>
+                                <option value="activos" {% if filtros.estado == 'activos' %}selected{% endif %}>Activos</option>
+                                <option value="inactivos" {% if filtros.estado == 'inactivos' %}selected{% endif %}>Inactivos</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary me-2">
+                                <i class="fas fa-filter me-2"></i>Filtrar
+                            </button>
+                            <a href="." class="btn btn-outline-secondary">
+                                <i class="fas fa-undo me-2"></i>Limpiar
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabla de usuarios -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>#</th>
+                                    <th>Usuario</th>
+                                    <th>Nombre Completo</th>
+                                    <th>Rol</th>
+                                    <th>Email</th>
+                                    <th>Último Login</th>
+                                    <th>Estado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="users-table-body">
+                                {% for usuario in usuarios.object_list %}
+                                <tr>
+                                    <td>{{ forloop.counter }}</td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            {% if usuario.foto_perfil %}
+                                            <img src="{{ usuario.foto_perfil }}" alt="{{ usuario.username }}" 
+                                                 class="rounded-circle me-2" width="32" height="32">
+                                            {% else %}
+                                            <div class="avatar-placeholder rounded-circle me-2 bg-secondary text-white d-flex align-items-center justify-content-center" 
+                                                 style="width: 32px; height: 32px;">
+                                                {{ usuario.username|first|upper }}
+                                            </div>
+                                            {% endif %}
+                                            <strong>{{ usuario.username }}</strong>
+                                        </div>
+                                    </td>
+                                    <td>{{ usuario.nombre_completo }}</td>
+                                    <td>
+                                        {% if usuario.rol == 'Administrador' %}
+                                            <span class="badge bg-danger">{{ usuario.rol }}</span>
+                                        {% elif usuario.rol == 'Gerente' %}
+                                            <span class="badge bg-primary">{{ usuario.rol }}</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">{{ usuario.rol }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ usuario.email }}</td>
+                                    <td>{{ usuario.ultimo_login|date:"d/m/Y H:i" }}</td>
+                                    <td>
+                                        {% if usuario.activo %}
+                                            <span class="badge bg-success">Activo</span>
+                                        {% else %}
+                                            <span class="badge bg-warning text-dark">Inactivo</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="d-flex gap-2">
+                                            <a href="{% url 'detalle_usuario' usuario.username%}" class="btn btn-sm btn-info" title="Ver detalles">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <a href="{% url 'editar_usuario' usuario.username%}" class="btn btn-sm btn-primary" title="Editar">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="8" class="text-center py-4">
+                                        <i class="fas fa-info-circle me-2"></i> No se encontraron usuarios
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Paginación -->
+                    {% if usuarios.paginator.num_pages > 1 %}
+                    <div class="d-flex justify-content-between align-items-center mt-4">
+                        <div class="text-muted">
+                            Mostrando {{ usuarios.start_index }} - {{ usuarios.end_index }} de {{ usuarios.paginator.count }} usuarios
+                        </div>
+                        <nav>
+                            <ul class="pagination mb-0">
+                                {% if usuarios.has_previous %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page=1{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                                            <i class="fas fa-angle-double-left"></i>
+                                        </a>
+                                    </li>
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ usuarios.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                                            <i class="fas fa-angle-left"></i>
+                                        </a>
+                                    </li>
+                                {% endif %}
+
+                                {% for num in usuarios.paginator.page_range %}
+                                    {% if usuarios.number == num %}
+                                        <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                                    {% elif num > usuarios.number|add:'-3' and num < usuarios.number|add:'3' %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page={{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ num }}</a>
+                                        </li>
+                                    {% endif %}
+                                {% endfor %}
+
+                                {% if usuarios.has_next %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ usuarios.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                                            <i class="fas fa-angle-right"></i>
+                                        </a>
+                                    </li>
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ usuarios.paginator.num_pages }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                                            <i class="fas fa-angle-double-right"></i>
+                                        </a>
+                                    </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast para notificaciones -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3">
+    <div id="notification-toast" class="toast" role="alert">
+        <div class="toast-header">
+            <i id="toast-icon" class="fas fa-info-circle me-2"></i>
+            <strong class="me-auto" id="toast-title">Notificación</strong>
+            <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+        </div>
+        <div class="toast-body" id="toast-message">
+            Mensaje
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .connectivity-status {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 1050;
+        padding: 8px 15px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: bold;
+        transition: all 0.3s ease;
+    }
+    
+    .status-online {
+        background: #28a745;
+        color: white;
+    }
+    
+    .status-offline {
+        background: #dc3545;
+        color: white;
+    }
+    
+    .status-checking {
+        background: #ffc107;
+        color: #000;
+    }
+    
+    #sync-btn:hover #sync-icon {
+        animation: rotate 1s linear infinite;
+    }
+    
+    @keyframes rotate {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+    
+    .syncing #sync-icon {
+        animation: rotate 1s linear infinite;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const connectivityStatus = document.getElementById('connectivity-status');
+    const statusText = document.getElementById('status-text');
+    const syncBtn = document.getElementById('sync-btn');
+    const syncIcon = document.getElementById('sync-icon');
+    
+    let isOnline = {% if modo_offline %}false{% else %}true{% endif %};
+    
+    // Función para mostrar toast
+    function showToast(title, message, type = 'info') {
+        const toast = document.getElementById('notification-toast');
+        const toastTitle = document.getElementById('toast-title');
+        const toastMessage = document.getElementById('toast-message');
+        const toastIcon = document.getElementById('toast-icon');
+        
+        // Configurar contenido
+        toastTitle.textContent = title;
+        toastMessage.textContent = message;
+        
+        // Configurar icono y color según tipo
+        const iconClasses = {
+            'success': 'fas fa-check-circle text-success',
+            'error': 'fas fa-exclamation-circle text-danger',
+            'warning': 'fas fa-exclamation-triangle text-warning',
+            'info': 'fas fa-info-circle text-info'
+        };
+        
+        toastIcon.className = iconClasses[type] || iconClasses.info;
+        
+        // Mostrar toast
+        const bsToast = new bootstrap.Toast(toast);
+        bsToast.show();
+    }
+    
+    // Función para actualizar estado de conectividad
+    function updateConnectivityStatus(online) {
+        isOnline = online;
+        connectivityStatus.classList.remove('d-none', 'status-online', 'status-offline', 'status-checking');
+        
+        if (online) {
+            connectivityStatus.classList.add('status-online');
+            statusText.innerHTML = '<i class="fas fa-wifi me-2"></i>Online';
+            syncBtn.disabled = false;
+        } else {
+            connectivityStatus.classList.add('status-offline');
+            statusText.innerHTML = '<i class="fas fa-wifi-slash me-2"></i>Offline';
+            syncBtn.disabled = true;
+        }
+        
+        // Ocultar después de 3 segundos si está online
+        if (online) {
+            setTimeout(() => {
+                connectivityStatus.classList.add('d-none');
+            }, 3000);
+        }
+    }
+    
+    // Verificar conectividad
+    function checkConnectivity() {
+        connectivityStatus.classList.remove('d-none');
+        connectivityStatus.classList.add('status-checking');
+        statusText.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Verificando...';
+        
+        fetch('{% url "check_connectivity" %}', {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            updateConnectivityStatus(data.online);
+            
+            if (!data.online && isOnline) {
+                showToast('Conexión perdida', 'Trabajando en modo offline', 'warning');
+            } else if (data.online && !isOnline) {
+                showToast('Conexión restablecida', 'Datos sincronizados', 'success');
+            }
+        })
+        .catch(error => {
+            console.error('Error verificando conectividad:', error);
+            updateConnectivityStatus(false);
+            showToast('Error de conectividad', 'No se pudo verificar la conexión', 'error');
+        });
+    }
+    
+    // Sincronización manual
+    function syncUsers() {
+        if (!isOnline) {
+            showToast('Sin conexión', 'No es posible sincronizar en modo offline', 'warning');
+            return;
+        }
+        
+        syncBtn.classList.add('syncing');
+        syncBtn.disabled = true;
+        
+        fetch('{% url "sync_users" %}', {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast('Sincronización completada', data.message, 'success');
+                // Recargar página después de 1 segundo
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1000);
+            } else {
+                showToast('Error de sincronización', data.message, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error en sincronización:', error);
+            showToast('Error de sincronización', 'No se pudo completar la sincronización', 'error');
+        })
+        .finally(() => {
+            syncBtn.classList.remove('syncing');
+            syncBtn.disabled = false;
+        });
+    }
+    
+    // Event listeners
+    syncBtn.addEventListener('click', syncUsers);
+    
+    // Verificar conectividad al cargar y cada 30 segundos
+    checkConnectivity();
+    setInterval(checkConnectivity, 30000);
+    
+    // Detectar cambios de conectividad del navegador
+    window.addEventListener('online', () => {
+        checkConnectivity();
+    });
+    
+    window.addEventListener('offline', () => {
+        updateConnectivityStatus(false);
+        showToast('Sin conexión', 'Trabajando en modo offline', 'warning');
+    });
+    
+    // Auto-filtrado en tiempo real (opcional)
+    const searchInput = document.getElementById('busqueda');
+    let searchTimeout;
+    
+    searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            if (this.value.length >= 3 || this.value.length === 0) {
+                document.getElementById('filter-form').submit();
+            }
+        }, 500);
+    });
+});
+</script>
+{% endblock %}

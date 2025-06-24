@@ -1,0 +1,218 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="display-6 fw-bold text-primary-custom mb-2">
+                        <i class="fas fa-file-alt me-3"></i>Reporte de Vehículos
+                    </h1>
+                    <p class="text-muted mb-0">Generación de reportes históricos</p>
+                </div>
+                <div class="dropdown">
+                    <button class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                        <i class="fas fa-download me-2"></i>Exportar
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="?{{ request.GET.urlencode }}&formato=pdf">PDF</a></li>
+                        <li><a class="dropdown-item" href="?{{ request.GET.urlencode }}&formato=excel">Excel</a></li>
+                        <li><a class="dropdown-item" href="?{{ request.GET.urlencode }}&formato=json">JSON</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="fas fa-filter me-2"></i>Filtros</h5>
+                </div>
+                <div class="card-body">
+                    <form method="get" class="row g-3">
+                        <div class="col-md-3">
+                            <label for="tipo_reporte" class="form-label">Tipo de Reporte</label>
+                            <select class="form-select" id="tipo_reporte" name="tipo_reporte">
+                                <option value="diario" {% if request.GET.tipo_reporte == 'diario' %}selected{% endif %}>Diario</option>
+                                <option value="semanal" {% if request.GET.tipo_reporte == 'semanal' %}selected{% endif %}>Semanal</option>
+                                <option value="mensual" {% if request.GET.tipo_reporte == 'mensual' %}selected{% endif %}>Mensual</option>
+                                <option value="personalizado" {% if request.GET.tipo_reporte == 'personalizado' %}selected{% endif %}>Personalizado</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="tipo_vehiculo" class="form-label">Tipo de Vehículo</label>
+                            <select class="form-select" id="tipo_vehiculo" name="tipo_vehiculo">
+                                <option value="">Todos</option>
+                                <option value="Oficial" {% if request.GET.tipo_vehiculo == 'Oficial' %}selected{% endif %}>Oficial</option>
+                                <option value="Residente" {% if request.GET.tipo_vehiculo == 'Residente' %}selected{% endif %}>Residente</option>
+                                <option value="No Residentes" {% if request.GET.tipo_vehiculo == 'No Residentes' %}selected{% endif %}>No Residentes</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="fecha_inicio" class="form-label">Fecha Inicio</label>
+                            <input type="date" class="form-control" id="fecha_inicio" name="fecha_inicio" 
+                                   value="{{ request.GET.fecha_inicio }}" 
+                                   {% if request.GET.tipo_reporte != 'personalizado' %}disabled{% endif %}>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="fecha_fin" class="form-label">Fecha Fin</label>
+                            <input type="date" class="form-control" id="fecha_fin" name="fecha_fin" 
+                                   value="{{ request.GET.fecha_fin }}"
+                                   {% if request.GET.tipo_reporte != 'personalizado' %}disabled{% endif %}>
+                        </div>
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-search me-2"></i>Generar Reporte
+                            </button>
+                            <a href="{% url 'reportes' %}" class="btn btn-outline-secondary">
+                                <i class="fas fa-undo me-2"></i>Limpiar
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Resumen -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Total Registros</h5>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h2 class="mb-0">{{ totales.registros }}</h2>
+                        <i class="fas fa-car fa-2x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Vehículos Activos</h5>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h2 class="mb-0">{{ totales.activos }}</h2>
+                        <i class="fas fa-play-circle fa-2x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-secondary text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Vehículos Finalizados</h5>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h2 class="mb-0">{{ totales.finalizados }}</h2>
+                        <i class="fas fa-stop-circle fa-2x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Total Recaudado</h5>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h2 class="mb-0">${{ totales.recaudado|default:"0"|floatformat:2 }}</h2>
+                        <i class="fas fa-dollar-sign fa-2x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabla de resultados -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>#</th>
+                                    <th>Placa</th>
+                                    <th>Tipo</th>
+                                    <th>Espacio</th>
+                                    <th>Entrada</th>
+                                    <th>Salida</th>
+                                    <th>Tiempo</th>
+                                    <th>Tarifa</th>
+                                    <th>Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for registro in registros %}
+                                <tr>
+                                    <td>{{ forloop.counter }}</td>
+                                    <td>{{ registro.placa }}</td>
+                                    <td>
+                                        {% if registro.tipo_vehiculo == 'Oficial' %}
+                                            <span class="badge bg-primary">{{ registro.tipo_vehiculo }}</span>
+                                        {% elif registro.tipo_vehiculo == 'Residente' %}
+                                            <span class="badge bg-success">{{ registro.tipo_vehiculo }}</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">{{ registro.tipo_vehiculo }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ registro.espacio.numero }}</td>
+                                    <td>{{ registro.hora_entrada|date:"d/m/Y H:i" }}</td>
+                                    <td>
+                                        {% if registro.hora_salida %}
+                                            {{ registro.hora_salida|date:"d/m/Y H:i" }}
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if registro.hora_salida %}
+                                            {{ registro.tiempo_estacionado }}
+                                        {% else %}
+                                            {{ registro.tiempo_transcurrido }}
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if registro.tarifa %}
+                                            ${{ registro.tarifa|floatformat:2 }}
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if registro.hora_salida %}
+                                            <span class="badge bg-secondary">Finalizado</span>
+                                        {% else %}
+                                            <span class="badge bg-success">Activo</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="9" class="text-center py-4">
+                                        <i class="fas fa-info-circle me-2"></i> No se encontraron registros con los filtros aplicados
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Habilitar/deshabilitar campos de fecha según tipo de reporte
+document.getElementById('tipo_reporte').addEventListener('change', function() {
+    const personalizado = this.value === 'personalizado';
+    document.getElementById('fecha_inicio').disabled = !personalizado;
+    document.getElementById('fecha_fin').disabled = !personalizado;
+});
+</script>
+{% endblock %}

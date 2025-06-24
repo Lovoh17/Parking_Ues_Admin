@@ -1,0 +1,152 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="display-6 fw-bold text-primary-custom mb-2">
+                        <i class="fas fa-car me-3"></i>Detalles del Vehículo
+                    </h1>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="{% url 'listar_registros' %}">Registros</a></li>
+                            <li class="breadcrumb-item active" aria-current="page">Detalles</li>
+                        </ol>
+                    </nav>
+                </div>
+                <div>
+                    <a href="{% url 'listar_registros' %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>Volver
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-6">
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Información Básica</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p class="mb-3"><strong>Placa:</strong><br>
+                                <span class="badge bg-dark fs-6">{{ registro.placa }}</span>
+                            </p>
+                            <p class="mb-3"><strong>Tipo de Vehículo:</strong><br>
+                                {% if registro.tipo_vehiculo == 'Oficial' %}
+                                    <span class="badge bg-primary">{{ registro.tipo_vehiculo }}</span>
+                                {% elif registro.tipo_vehiculo == 'Residente' %}
+                                    <span class="badge bg-success">{{ registro.tipo_vehiculo }}</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ registro.tipo_vehiculo }}</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <p class="mb-3"><strong>Espacio:</strong><br>
+                                <span class="badge bg-info text-dark">{{ registro.espacio.numero }}</span>
+                            </p>
+                            <p class="mb-3"><strong>Estado:</strong><br>
+                                {% if registro.hora_salida %}
+                                    <span class="badge bg-secondary">Finalizado</span>
+                                {% else %}
+                                    <span class="badge bg-success">Activo</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-clock me-2"></i>Tiempos y Tarifa</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p class="mb-3"><strong>Hora de Entrada:</strong><br>
+                                {{ registro.hora_entrada|date:"d/m/Y H:i" }}
+                            </p>
+                            <p class="mb-3"><strong>Hora de Salida:</strong><br>
+                                {% if registro.hora_salida %}
+                                    {{ registro.hora_salida|date:"d/m/Y H:i" }}
+                                {% else %}
+                                    <span class="text-muted">En parqueo</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <p class="mb-3"><strong>Tiempo Estacionado:</strong><br>
+                                {{ tiempo_estacionado }}
+                            </p>
+                            <p class="mb-3"><strong>Tarifa:</strong><br>
+                                {% if registro.tarifa %}
+                                    ${{ registro.tarifa|floatformat:2 }}
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-cogs me-2"></i>Acciones</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex gap-3">
+                        {% if not registro.hora_salida %}
+                            <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#confirmarSalidaModal">
+                                <i class="fas fa-sign-out-alt me-2"></i>Registrar Salida
+                            </button>
+                        {% endif %}
+                        <a href="#" class="btn btn-warning">
+                            <i class="fas fa-edit me-2"></i>Editar Registro
+                        </a>
+                        <a href="{% url 'listar_registros' %}" class="btn btn-outline-secondary ms-auto">
+                            <i class="fas fa-times me-2"></i>Cerrar
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para confirmar salida -->
+<div class="modal fade" id="confirmarSalidaModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirmar Salida</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                ¿Está seguro que desea registrar la salida del vehículo con placa <strong>{{ registro.placa }}</strong>?
+                <div class="alert alert-warning mt-3">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Esta acción calculará la tarifa correspondiente y no se podrá deshacer.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <a href="{% url 'registrar_salida' registro.id %}" class="btn btn-danger">Confirmar Salida</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
