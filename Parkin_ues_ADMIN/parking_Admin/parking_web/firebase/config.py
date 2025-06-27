@@ -32,7 +32,7 @@ class FirebaseConfig:
             database_url = getattr(
                 settings,
                 'FIREBASE_DATABASE_URL',
-                'https://parkingues-default-rtdb.firebaseio.com/'  # Reemplaza con tu URL
+                'https://parkingues-69cfa-default-rtdb.firebaseio.com/'  # Reemplaza con tu URL
             )
             
             # Inicializar Firebase solo si no está inicializado

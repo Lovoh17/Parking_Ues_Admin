@@ -2,267 +2,218 @@
 
 {% block content %}
 <div class="container-fluid">
-    <!-- Header del Dashboard -->
+    <!-- Header con gradiente sutil -->
     <div class="row mb-4">
         <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <h1 class="display-6 fw-bold text-primary-custom mb-2">
-                        <i class="fas fa-tachometer-alt me-3"></i>Dashboard de Parqueo
-                    </h1>
-                    <p class="text-muted mb-0">Panel de control y monitoreo en tiempo real</p>
-                </div>
-                <div class="d-flex gap-2">
-                    <button class="btn btn-outline-primary" id="refreshData">
-                        <i class="fas fa-sync-alt me-2"></i>Actualizar
-                    </button>
-                    <div class="dropdown">
-                        <button class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                            <i class="fas fa-calendar me-2"></i>Hoy
+            <div class="dashboard-header p-4 rounded-3 shadow-sm">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h1 class="display-6 fw-bold text-primary mb-2 animate-fade-in">
+                            <i class="fas fa-tachometer-alt me-3 pulse"></i>Dashboard del Sistema
+                        </h1>
+                        <p class="text-muted mb-1">Visión general de todas las operaciones</p>
+                        <small class="text-muted opacity-75">
+                            <i class="fas fa-clock me-1"></i>Última actualización: {{ ultima_actualizacion }}
+                        </small>
+                    </div>
+                    <div>
+                        <button class="btn btn-outline-primary btn-refresh shadow-sm" id="refreshBtn">
+                            <i class="fas fa-sync-alt me-2"></i>Actualizar
                         </button>
-                        <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="#">Hoy</a></li>
-                            <li><a class="dropdown-item" href="#">Esta semana</a></li>
-                            <li><a class="dropdown-item" href="#">Este mes</a></li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Fila 1: Tarjetas de resumen mejoradas -->
-    <div class="row g-4 mb-4">
-        <div class="col-xl-3 col-md-6">
-            <div class="card h-100 gradient-card-success">
-                <div class="card-body p-4">
-                    <div class="d-flex align-items-center justify-content-between">
-                        <div>
-                            <div class="text-success-emphasis mb-2">
-                                <i class="fas fa-dollar-sign fs-3"></i>
-                            </div>
-                            <h6 class="card-subtitle mb-2 text-success-emphasis fw-semibold">Ingresos Hoy</h6>
-                            <h3 class="card-title mb-0 fw-bold text-success">${{ ingresos_hoy|default:"0.00" }}</h3>
-                        </div>
-                        <div class="progress-circle" data-percentage="75">
-                            <svg class="progress-ring" width="60" height="60">
-                                <circle class="progress-ring-circle" stroke="#388E3C" stroke-width="4" fill="transparent" r="26" cx="30" cy="30"/>
-                            </svg>
-                        </div>
-                    </div>
-                    <div class="mt-3">
-                        <small class="text-success">
-                            <i class="fas fa-arrow-up me-1"></i>+12% vs ayer
-                        </small>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="col-xl-3 col-md-6">
-            <div class="card h-100 gradient-card-info">
-                <div class="card-body p-4">
-                    <div class="d-flex align-items-center justify-content-between">
-                        <div>
-                            <div class="text-info-emphasis mb-2">
-                                <i class="fas fa-car fs-3"></i>
-                            </div>
-                            <h6 class="card-subtitle mb-2 text-info-emphasis fw-semibold">Vehículos Actuales</h6>
-                            <h3 class="card-title mb-0 fw-bold text-info">{{ vehiculos_actuales|default:"0" }}</h3>
-                        </div>
-                        <div class="metric-badge bg-info-subtle text-info">
-                            <i class="fas fa-car-side"></i>
-                        </div>
-                    </div>
-                    <div class="mt-3">
-                        <small class="text-info">
-                            <i class="fas fa-clock me-1"></i>Tiempo promedio: 2.5h
-                        </small>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="col-xl-3 col-md-6">
-            <div class="card h-100 gradient-card-warning">
-                <div class="card-body p-4">
-                    <div class="d-flex align-items-center justify-content-between">
-                        <div>
-                            <div class="text-warning-emphasis mb-2">
-                                <i class="fas fa-parking fs-3"></i>
-                            </div>
-                            <h6 class="card-subtitle mb-2 text-warning-emphasis fw-semibold">Espacios Disponibles</h6>
-                            <h3 class="card-title mb-0 fw-bold text-warning">{{ espacios_disponibles|default:"0" }}/{{ capacidad_total|default:"0" }}</h3>
-                        </div>
-                        <div class="occupancy-chart" data-occupied="{{ vehiculos_actuales|default:0 }}" data-total="{{ capacidad_total|default:100 }}">
-                            <div class="occupancy-fill"></div>
-                        </div>
-                    </div>
-                    <div class="mt-3">
-                        <div class="progress" style="height: 4px;">
-                            <div class="progress-bar bg-warning" role="progressbar" style="width: {{ ocupacion_porcentaje|default:0 }}%"></div>
-                        </div>
-                        <small class="text-warning">
-                            {{ ocupacion_porcentaje|default:0 }}% ocupado
-                        </small>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="col-xl-3 col-md-6">
-            <div class="card h-100 gradient-card-primary">
-                <div class="card-body p-4">
-                    <div class="d-flex align-items-center justify-content-between">
-                        <div>
-                            <div class="text-primary-emphasis mb-2">
-                                <i class="fas fa-chart-line fs-3"></i>
-                            </div>
-                            <h6 class="card-subtitle mb-2 text-primary-emphasis fw-semibold">Ingresos Mensuales</h6>
-                            <h3 class="card-title mb-0 fw-bold text-primary">${{ ingresos_mes|default:"0.00" }}</h3>
-                        </div>
-                        <div class="mini-chart">
-                            <canvas id="miniChart" width="60" height="40"></canvas>
-                        </div>
-                    </div>
-                    <div class="mt-3">
-                        <small class="text-primary">
-                            <i class="fas fa-calendar me-1"></i>Meta: $5,000
-                        </small>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Fila 2: Gráficos principales mejorados -->
+    {% if error %}
+    <div class="alert alert-danger mb-4 shadow-sm animate-slide-down">
+        <i class="fas fa-exclamation-triangle me-2"></i>{{ error }}
+    </div>
+    {% endif %}
+
+    <!-- Fila 1: Métricas clave con animaciones -->
     <div class="row g-4 mb-4">
-        <!-- Gráfico de flujo de dinero -->
+        <!-- Parqueos -->
+        <div class="col-xl-3 col-md-6">
+            <div class="metric-card card h-100 border-0 shadow-sm animate-fade-up" style="animation-delay: 0.1s">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-grow-1">
+                            <h6 class="text-uppercase text-muted fw-bold mb-2 letter-spacing">
+                                <i class="fas fa-parking me-1"></i> Parqueos
+                            </h6>
+                            <h2 class="mb-1 fw-bold counter-text">{{ vehiculos_actuales }}/{{ capacidad_total }}</h2>
+                            <small class="text-muted">{{ ocupacion_porcentaje }}% ocupación</small>
+                            <div class="progress mt-2" style="height: 4px;">
+                                <div class="progress-bar bg-primary" role="progressbar" 
+                                     style="width: {{ ocupacion_porcentaje }}%"></div>
+                            </div>
+                        </div>
+                        <div class="metric-icon bg-primary">
+                            <i class="fas fa-car"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-border-primary"></div>
+            </div>
+        </div>
+        
+        <!-- Usuarios -->
+        <div class="col-xl-3 col-md-6">
+            <div class="metric-card card h-100 border-0 shadow-sm animate-fade-up" style="animation-delay: 0.2s">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-grow-1">
+                            <h6 class="text-uppercase text-muted fw-bold mb-2 letter-spacing">
+                                <i class="fas fa-users me-1"></i> Usuarios
+                            </h6>
+                            <h2 class="mb-1 fw-bold counter-text">{{ total_usuarios }}</h2>
+                            <small class="text-muted">{{ usuarios_activos }} activos</small>
+                            <div class="mt-2">
+                                <span class="badge bg-success-soft text-success">
+                                    <i class="fas fa-arrow-up me-1"></i>Activos
+                                </span>
+                            </div>
+                        </div>
+                        <div class="metric-icon bg-success">
+                            <i class="fas fa-user"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-border-success"></div>
+            </div>
+        </div>
+        
+        <!-- Transacciones -->
+        <div class="col-xl-3 col-md-6">
+            <div class="metric-card card h-100 border-0 shadow-sm animate-fade-up" style="animation-delay: 0.3s">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-grow-1">
+                            <h6 class="text-uppercase text-muted fw-bold mb-2 letter-spacing">
+                                <i class="fas fa-dollar-sign me-1"></i> Ingresos Hoy
+                            </h6>
+                            <h2 class="mb-1 fw-bold counter-text">${{ ingresos_hoy }}</h2>
+                            <small class="text-muted">{{ transacciones_hoy }} transacciones</small>
+                            <div class="mt-2">
+                                <span class="badge bg-info-soft text-info">
+                                    <i class="fas fa-chart-line me-1"></i>Creciendo
+                                </span>
+                            </div>
+                        </div>
+                        <div class="metric-icon bg-info">
+                            <i class="fas fa-money-bill-wave"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-border-info"></div>
+            </div>
+        </div>
+        
+        <!-- Infracciones -->
+        <div class="col-xl-3 col-md-6">
+            <div class="metric-card card h-100 border-0 shadow-sm animate-fade-up" style="animation-delay: 0.4s">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-grow-1">
+                            <h6 class="text-uppercase text-muted fw-bold mb-2 letter-spacing">
+                                <i class="fas fa-exclamation-triangle me-1"></i> Infracciones
+                            </h6>
+                            <h2 class="mb-1 fw-bold counter-text">{{ infracciones_hoy }}</h2>
+                            <small class="text-muted">{{ total_infracciones }} total</small>
+                            <div class="mt-2">
+                                <span class="badge bg-warning-soft text-warning">
+                                    <i class="fas fa-eye me-1"></i>Monitoreando
+                                </span>
+                            </div>
+                        </div>
+                        <div class="metric-icon bg-warning">
+                            <i class="fas fa-shield-alt"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-border-warning"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Fila 2: Gráficos y espacios mejorados -->
+    <div class="row g-4 mb-4">
+        <!-- Gráfico de ingresos -->
         <div class="col-xl-8">
-            <div class="card h-100">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <div>
-                        <h5 class="card-title mb-1">
-                            <i class="fas fa-chart-area me-2 text-primary"></i>
-                            Flujo Financiero
+            <div class="card h-100 border-0 shadow-sm animate-fade-up" style="animation-delay: 0.5s">
+                <div class="card-header bg-gradient-light border-0 px-4 py-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0 fw-bold">
+                            <i class="fas fa-chart-line me-2 text-primary"></i>
+                            Ingresos Mensuales
                         </h5>
-                        <small class="text-muted">Entradas y salidas de los últimos 7 días</small>
-                    </div>
-                    <div class="btn-group btn-group-sm" role="group">
-                        <input type="radio" class="btn-check" name="chartPeriod" id="week" checked>
-                        <label class="btn btn-outline-primary" for="week">7D</label>
-                        <input type="radio" class="btn-check" name="chartPeriod" id="month">
-                        <label class="btn btn-outline-primary" for="month">30D</label>
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                <i class="fas fa-calendar me-1"></i>2024
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="#">2024</a></li>
+                                <li><a class="dropdown-item" href="#">2023</a></li>
+                            </ul>
+                        </div>
                     </div>
                 </div>
-                <div class="card-body">
-                    <canvas id="moneyFlowChart" height="80"></canvas>
+                <div class="card-body p-4">
+                    <canvas id="incomeChart" height="250"></canvas>
                 </div>
             </div>
         </div>
         
-        <!-- Gráfico de entradas por sección -->
+        <!-- Estado de espacios mejorado -->
         <div class="col-xl-4">
-            <div class="card h-100">
-                <div class="card-header">
-                    <h5 class="card-title mb-1">
-                        <i class="fas fa-chart-pie me-2 text-primary"></i>
-                        Distribución por Tipo
-                    </h5>
-                    <small class="text-muted">Uso de espacios por categoría</small>
-                </div>
-                <div class="card-body d-flex flex-column">
-                    <div class="flex-grow-1">
-                        <canvas id="parkingTypeChart" height="120"></canvas>
-                    </div>
-                    <div class="mt-3">
-                        <div class="row text-center">
-                            <div class="col-4">
-                                <div class="text-primary fw-bold">45%</div>
-                                <small class="text-muted">Público</small>
-                            </div>
-                            <div class="col-4">
-                                <div class="text-warning fw-bold">30%</div>
-                                <small class="text-muted">Privado</small>
-                            </div>
-                            <div class="col-4">
-                                <div class="text-info fw-bold">25%</div>
-                                <small class="text-muted">Reservado</small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Fila 3: Estado de parqueos mejorado -->
-    <div class="row g-4">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <div>
-                        <h5 class="card-title mb-1">
-                            <i class="fas fa-car me-2 text-primary"></i>
-                            Mapa de Espacios de Parqueo
+            <div class="card h-100 border-0 shadow-sm animate-fade-up" style="animation-delay: 0.6s">
+                <div class="card-header bg-gradient-light border-0 px-4 py-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0 fw-bold">
+                            <i class="fas fa-parking me-2 text-primary"></i>
+                            Estado de Espacios
                         </h5>
-                        <small class="text-muted">Estado en tiempo real de todos los espacios</small>
-                    </div>
-                    <div class="d-flex gap-3">
-                        <div class="legend-item">
-                            <span class="legend-color available"></span>
-                            <small>Disponible</small>
-                        </div>
-                        <div class="legend-item">
-                            <span class="legend-color occupied"></span>
-                            <small>Ocupado</small>
-                        </div>
-                        <div class="legend-item">
-                            <span class="legend-color private"></span>
-                            <small>Privado</small>
-                        </div>
-                        <div class="legend-item">
-                            <span class="legend-color reserved"></span>
-                            <small>Reservado</small>
-                        </div>
+                        <span class="badge bg-primary-soft text-primary">
+                            En tiempo real
+                        </span>
                     </div>
                 </div>
-                <div class="card-body">
-                    <div class="parking-grid">
+                <div class="card-body p-4">
+                    <div class="parking-legend mb-3">
+                        <div class="d-flex gap-3 flex-wrap">
+                            <div class="legend-item">
+                                <div class="legend-color bg-success"></div>
+                                <small>Disponible</small>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color bg-danger"></div>
+                                <small>Ocupado</small>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color bg-warning"></div>
+                                <small>VIP</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="parking-status-grid">
                         {% for espacio in espacios %}
-                        <div class="parking-space 
-                            {% if espacio.disponible %}available{% else %}occupied{% endif %}
-                            {% if espacio.tipo == 'privado' %}private{% endif %}
-                            {% if espacio.tipo == 'reservado' %}reserved{% endif %}"
-                            data-bs-toggle="tooltip" 
-                            data-bs-placement="top" 
-                            title="{% if espacio.disponible %}Espacio disponible{% else %}Ocupado por {{ espacio.placa|default:'Vehículo' }}{% endif %}">
-                            
+                        <div class="parking-space {% if espacio.disponible %}available{% else %}occupied{% endif %} {{ espacio.tipo }}"
+                             data-bs-toggle="tooltip" 
+                             title="Espacio {{ espacio.numero|upper }} - {% if espacio.disponible %}Disponible{% else %}Ocupado{% endif %}{% if espacio.tipo == 'vip' %} (VIP){% endif %}">
                             <div class="space-number">{{ espacio.numero }}</div>
-                            
                             {% if not espacio.disponible %}
-                            <div class="vehicle-info">
+                            <div class="occupied-icon">
                                 <i class="fas fa-car"></i>
-                                <div class="vehicle-plate">{{ espacio.placa|default:"N/A" }}</div>
-                                {% if espacio.tiempo_ocupado %}
-                                <div class="time-occupied">{{ espacio.tiempo_ocupado }}</div>
-                                {% endif %}
-                            </div>
-                            {% else %}
-                            <div class="available-icon">
-                                <i class="fas fa-parking"></i>
                             </div>
                             {% endif %}
-                            
-                            {% if espacio.tipo == 'privado' %}
-                            <div class="space-type-indicator">
-                                <i class="fas fa-lock"></i>
-                            </div>
-                            {% elif espacio.tipo == 'reservado' %}
-                            <div class="space-type-indicator">
-                                <i class="fas fa-star"></i>
+                            {% if espacio.tipo == 'vip' %}
+                            <div class="vip-badge">
+                                <i class="fas fa-crown"></i>
                             </div>
                             {% endif %}
+                            <div class="space-status-indicator"></div>
                         </div>
                         {% endfor %}
                     </div>
@@ -270,103 +221,181 @@
             </div>
         </div>
     </div>
-    
-    <!-- Fila 4: Actividad reciente -->
-    <div class="row g-4 mt-4">
-        <div class="col-xl-8">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="card-title mb-1">
-                        <i class="fas fa-history me-2 text-primary"></i>
-                        Actividad Reciente
-                    </h5>
-                    <small class="text-muted">Últimos movimientos registrados</small>
+
+    <!-- Fila 3: Tablas resumen mejoradas -->
+    <div class="row g-4">
+        <!-- Últimas transacciones -->
+        <div class="col-xl-6">
+            <div class="card h-100 border-0 shadow-sm animate-fade-up" style="animation-delay: 0.7s">
+                <div class="card-header bg-gradient-light border-0 px-4 py-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0 fw-bold">
+                            <i class="fas fa-exchange-alt me-2 text-primary"></i>
+                            Últimas Transacciones
+                        </h5>
+                        <a href="{% url 'home' %}" class="btn btn-sm btn-outline-primary hover-lift">
+                            Ver todas <i class="fas fa-arrow-right ms-1"></i>
+                        </a>
+                    </div>
                 </div>
-                <div class="card-body">
-                    <div class="activity-timeline">
-                        <div class="activity-item">
-                            <div class="activity-icon bg-success">
-                                <i class="fas fa-sign-in-alt"></i>
-                            </div>
-                            <div class="activity-content">
-                                <div class="activity-header">
-                                    <span class="fw-semibold">Entrada registrada</span>
-                                    <small class="text-muted">Hace 5 min</small>
-                                </div>
-                                <div class="activity-body">
-                                    Vehículo ABC-123 ingresó al espacio P-15
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="activity-item">
-                            <div class="activity-icon bg-danger">
-                                <i class="fas fa-sign-out-alt"></i>
-                            </div>
-                            <div class="activity-content">
-                                <div class="activity-header">
-                                    <span class="fw-semibold">Salida registrada</span>
-                                    <small class="text-muted">Hace 12 min</small>
-                                </div>
-                                <div class="activity-body">
-                                    Vehículo XYZ-789 salió del espacio P-08 - Duración: 2h 30min
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="activity-item">
-                            <div class="activity-icon bg-warning">
-                                <i class="fas fa-exclamation-triangle"></i>
-                            </div>
-                            <div class="activity-content">
-                                <div class="activity-header">
-                                    <span class="fw-semibold">Tiempo excedido</span>
-                                    <small class="text-muted">Hace 18 min</small>
-                                </div>
-                                <div class="activity-body">
-                                    Vehículo DEF-456 en espacio P-22 excedió tiempo límite
-                                </div>
-                            </div>
-                        </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0 modern-table">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="border-0 fw-bold">ID</th>
+                                    <th class="border-0 fw-bold">Usuario</th>
+                                    <th class="border-0 fw-bold">Monto</th>
+                                    <th class="border-0 fw-bold">Tipo</th>
+                                    <th class="border-0 fw-bold">Fecha</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td colspan="5" class="text-center py-5">
+                                        <div class="development-notice">
+                                            <i class="fas fa-code text-primary fs-2 mb-3"></i>
+                                            <h6 class="text-muted mb-2">Módulo en Desarrollo</h6>
+                                            <p class="text-muted small mb-0">Las transacciones se mostrarán aquí próximamente</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
         </div>
         
-        <div class="col-xl-4">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="card-title mb-1">
-                        <i class="fas fa-bell me-2 text-primary"></i>
-                        Alertas y Notificaciones
-                    </h5>
+        <!-- Últimas infracciones -->
+        <div class="col-xl-6">
+            <div class="card h-100 border-0 shadow-sm animate-fade-up" style="animation-delay: 0.8s">
+                <div class="card-header bg-gradient-light border-0 px-4 py-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0 fw-bold">
+                            <i class="fas fa-exclamation-circle me-2 text-warning"></i>
+                            Últimas Infracciones
+                        </h5>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-warning-soft text-warning">
+                                <i class="fas fa-shield-alt me-1"></i>{{ total_infracciones }} total
+                            </span>
+                            <a href="{% url 'home' %}" class="btn btn-sm btn-outline-primary hover-lift">
+                                Ver todas <i class="fas fa-arrow-right ms-1"></i>
+                            </a>
+                        </div>
+                    </div>
                 </div>
-                <div class="card-body">
-                    <div class="alert alert-warning d-flex align-items-center" role="alert">
-                        <i class="fas fa-exclamation-triangle me-2"></i>
-                        <div>
-                            <strong>Capacidad alta</strong><br>
-                            <small>85% de espacios ocupados</small>
-                        </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0 modern-table">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="border-0 fw-bold">Descripción</th>
+                                    <th class="border-0 fw-bold">Tipo</th>
+                                    <th class="border-0 fw-bold">Multa</th>
+                                    <th class="border-0 fw-bold">Estado</th>
+                                    <th class="border-0 fw-bold">Fecha</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if infracciones_lista %}
+                                    {% for infraccion in infracciones_lista %}
+                                    <tr class="infraction-row">
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="infraction-icon me-2">
+                                                    {% if 'horario' in infraccion.descripcion|lower %}
+                                                        <i class="fas fa-clock text-danger"></i>
+                                                    {% elif 'tiempo' in infraccion.descripcion|lower %}
+                                                        <i class="fas fa-hourglass-half text-warning"></i>
+                                                    {% elif 'lugar' in infraccion.descripcion|lower %}
+                                                        <i class="fas fa-map-marker-alt text-info"></i>
+                                                    {% else %}
+                                                        <i class="fas fa-exclamation-triangle text-warning"></i>
+                                                    {% endif %}
+                                                </div>
+                                                <div>
+                                                    <div class="fw-semibold">{{ infraccion.descripcion|truncatechars:30 }}</div>
+                                                    <small class="text-muted">
+                                                        <i class="fas fa-user me-1"></i>{{ infraccion.usuario_id|truncatechars:10 }}
+                                                    </small>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-secondary-soft text-secondary">
+                                                {{ infraccion.tipo|truncatechars:15 }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="fw-bold text-danger">
+                                                ${{ infraccion.multa }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            {% if infraccion.estado == 'pending' %}
+                                                <span class="badge bg-warning-soft text-warning">
+                                                    <i class="fas fa-clock me-1"></i>Pendiente
+                                                </span>
+                                            {% elif infraccion.estado == 'paid' %}
+                                                <span class="badge bg-success-soft text-success">
+                                                    <i class="fas fa-check me-1"></i>Pagada
+                                                </span>
+                                            {% elif infraccion.estado == 'cancelled' %}
+                                                <span class="badge bg-danger-soft text-danger">
+                                                    <i class="fas fa-times me-1"></i>Cancelada
+                                                </span>
+                                            {% else %}
+                                                <span class="badge bg-secondary-soft text-secondary">
+                                                    {{ infraccion.estado|title }}
+                                                </span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="d-flex flex-column">
+                                                {% if infraccion.fecha_completa %}
+                                                    <span class="fw-semibold">{{ infraccion.fecha_completa|slice:":10" }}</span>
+                                                    <small class="text-muted">{{ infraccion.fecha_completa|slice:"11:16" }}</small>
+                                                {% else %}
+                                                    <span class="text-muted">Fecha no disponible</span>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="6" class="text-center py-5">
+                                            <div class="no-data-message">
+                                                <i class="fas fa-shield-check text-success fs-2 mb-3"></i>
+                                                <h6 class="text-muted mb-2">No hay infracciones registradas</h6>
+                                                <p class="text-muted small mb-0">El sistema está monitoreando activamente</p>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
                     </div>
-                    
-                    <div class="alert alert-info d-flex align-items-center" role="alert">
-                        <i class="fas fa-clock me-2"></i>
-                        <div>
-                            <strong>Mantenimiento programado</strong><br>
-                            <small>Sector A - Mañana 9:00 AM</small>
-                        </div>
-                    </div>
-                    
-                    <div class="notification-item">
+                    {% if infracciones_lista %}
+                    <div class="card-footer bg-light border-0 px-4 py-3">
                         <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <div class="fw-semibold">Sistema funcionando</div>
-                                <small class="text-success">Todos los sensores operativos</small>
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Mostrando las {{ infracciones_lista|length }} infracciones más recientes
+                            </small>
+                            <div class="infractions-summary">
+                                <span class="badge bg-warning-soft text-warning me-2">
+                                    {{ infracciones_hoy }} hoy
+                                </span>
+                                <span class="badge bg-secondary-soft text-secondary">
+                                    {{ total_infracciones }} total
+                                </span>
                             </div>
-                            <i class="fas fa-check-circle text-success"></i>
                         </div>
                     </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -377,94 +406,43 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
-// Configuración de colores UES
-const uesColors = {
-    primary: '#800000',
-    secondary: '#6D2323',
-    accent: '#03DAC6',
-    rojoBrillante: '#BF3131',
-    rojoSuave: '#E55050',
-    beigeDorado: '#EAD196',
-    azulNoche: '#2B2A4C',
-    verde: '#388E3C',
-    amarillo: '#FFC107',
-    rojo: '#D32F2F'
-};
+// Configuración común
+Chart.defaults.font.family = 'system-ui, -apple-system, sans-serif';
+Chart.defaults.color = '#6c757d';
 
-// Gráfico de flujo de dinero mejorado
-const moneyCtx = document.getElementById('moneyFlowChart').getContext('2d');
-const gradient1 = moneyCtx.createLinearGradient(0, 0, 0, 400);
-gradient1.addColorStop(0, 'rgba(56, 142, 60, 0.3)');
-gradient1.addColorStop(1, 'rgba(56, 142, 60, 0.05)');
-
-const gradient2 = moneyCtx.createLinearGradient(0, 0, 0, 400);
-gradient2.addColorStop(0, 'rgba(211, 47, 47, 0.3)');
-gradient2.addColorStop(1, 'rgba(211, 47, 47, 0.05)');
-
-const moneyFlowChart = new Chart(moneyCtx, {
-    type: 'line',
+// Gráfico de ingresos mejorado
+const ctxIncome = document.getElementById('incomeChart').getContext('2d');
+const incomeChart = new Chart(ctxIncome, {
+    type: 'bar',
     data: {
-        labels: {{ dias_semana|safe }},
-        datasets: [
-            {
-                label: 'Ingresos',
-                data: {{ ingresos_semana|safe }},
-                backgroundColor: gradient1,
-                borderColor: uesColors.verde,
-                borderWidth: 3,
-                tension: 0.4,
-                fill: true,
-                pointBackgroundColor: uesColors.verde,
-                pointBorderColor: '#fff',
-                pointBorderWidth: 2,
-                pointRadius: 6,
-                pointHoverRadius: 8
-            },
-            {
-                label: 'Gastos',
-                data: {{ gastos_semana|safe }},
-                backgroundColor: gradient2,
-                borderColor: uesColors.rojo,
-                borderWidth: 3,
-                tension: 0.4,
-                fill: true,
-                pointBackgroundColor: uesColors.rojo,
-                pointBorderColor: '#fff',
-                pointBorderWidth: 2,
-                pointRadius: 6,
-                pointHoverRadius: 8
-            }
-        ]
+        labels: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'],
+        datasets: [{
+            label: 'Ingresos Mensuales',
+            data: [1200, 1900, 1500, 2000, 2200, 3000, 2800, 2500, 2100, 2300, 2400, 3000],
+            backgroundColor: 'rgba(0, 123, 255, 0.1)',
+            borderColor: 'rgba(0, 123, 255, 1)',
+            borderWidth: 2,
+            borderRadius: 6,
+            borderSkipped: false,
+        }]
     },
     options: {
         responsive: true,
         maintainAspectRatio: false,
-        interaction: {
-            intersect: false,
-            mode: 'index'
-        },
         plugins: {
             legend: {
-                position: 'top',
-                labels: {
-                    usePointStyle: true,
-                    padding: 20,
-                    font: {
-                        size: 12,
-                        weight: '500'
-                    }
-                }
+                display: false
             },
             tooltip: {
                 backgroundColor: 'rgba(0, 0, 0, 0.8)',
                 titleColor: '#fff',
                 bodyColor: '#fff',
-                borderColor: uesColors.accent,
+                borderColor: 'rgba(0, 123, 255, 1)',
                 borderWidth: 1,
                 cornerRadius: 8,
                 callbacks: {
                     label: function(context) {
-                        return context.dataset.label + ':  + context.raw.toFixed(2);
+                        return 'Ingresos: $' + context.parsed.y.toLocaleString();
                     }
                 }
             }
@@ -475,388 +453,575 @@ const moneyFlowChart = new Chart(moneyCtx, {
                     display: false
                 },
                 ticks: {
-                    font: {
-                        size: 11
-                    }
+                    color: '#6c757d'
                 }
             },
             y: {
                 beginAtZero: true,
                 grid: {
-                    color: 'rgba(0, 0, 0, 0.05)'
+                    color: 'rgba(0, 0, 0, 0.1)'
                 },
                 ticks: {
+                    color: '#6c757d',
                     callback: function(value) {
-                        return ' + value;
-                    },
-                    font: {
-                        size: 11
+                        return '$' + value.toLocaleString();
                     }
                 }
             }
-        }
-    }
-});
-
-// Gráfico de entradas por tipo mejorado
-const typeCtx = document.getElementById('parkingTypeChart').getContext('2d');
-const parkingTypeChart = new Chart(typeCtx, {
-    type: 'doughnut',
-    data: {
-        labels: ['Público', 'Privado', 'Reservado'],
-        datasets: [{
-            data: {{ entradas_por_tipo|safe }},
-            backgroundColor: [
-                uesColors.accent,
-                uesColors.primary,
-                uesColors.amarillo
-            ],
-            borderWidth: 0,
-            hoverOffset: 8
-        }]
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        cutout: '60%',
-        plugins: {
-            legend: {
-                display: false
-            },
-            tooltip: {
-                backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                titleColor: '#fff',
-                bodyColor: '#fff',
-                borderColor: uesColors.accent,
-                borderWidth: 1,
-                cornerRadius: 8,
-                callbacks: {
-                    label: function(context) {
-                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                        const value = context.raw;
-                        const percentage = Math.round((value / total) * 100);
-                        return `${context.label}: ${value} (${percentage}%)`;
-                    }
-                }
-            }
-        }
-    }
-});
-
-// Mini gráfico para ingresos mensuales
-const miniCtx = document.getElementById('miniChart').getContext('2d');
-const miniChart = new Chart(miniCtx, {
-    type: 'line',
-    data: {
-        labels: ['', '', '', '', '', '', ''],
-        datasets: [{
-            data: [12, 19, 8, 15, 22, 18, 25],
-            borderColor: uesColors.primary,
-            borderWidth: 2,
-            tension: 0.4,
-            pointRadius: 0,
-            fill: false
-        }]
-    },
-    options: {
-        responsive: false,
-        plugins: {
-            legend: { display: false }
         },
-        scales: {
-            x: { display: false },
-            y: { display: false }
+        interaction: {
+            intersect: false,
+            mode: 'index'
         }
     }
+});
+
+// Animación del botón de actualizar
+document.getElementById('refreshBtn').addEventListener('click', function() {
+    const icon = this.querySelector('i');
+    const btn = this;
+    
+    btn.disabled = true;
+    icon.classList.add('fa-spin');
+    btn.innerHTML = '<i class="fas fa-sync-alt fa-spin me-2"></i>Actualizando...';
+    
+    setTimeout(() => {
+        location.reload();
+    }, 1500);
 });
 
 // Inicializar tooltips
 document.addEventListener('DOMContentLoaded', function() {
-    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-        return new bootstrap.Tooltip(tooltipTriggerEl);
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function(tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl, {
+            trigger: 'hover'
+        });
     });
     
-    // Botón de actualizar con animación
-    document.getElementById('refreshData').addEventListener('click', function() {
-        this.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Actualizando...';
-        setTimeout(() => {
-            this.innerHTML = '<i class="fas fa-sync-alt me-2"></i>Actualizar';
-            // Aquí iría la lógica de actualización real
-        }, 2000);
+    // Animación de contador
+    animateCounters();
+});
+
+// Función para animar contadores
+function animateCounters() {
+    const counters = document.querySelectorAll('.counter-text');
+    counters.forEach(counter => {
+        const target = parseInt(counter.textContent.replace(/[^\d]/g, ''));
+        if (target) {
+            let current = 0;
+            const increment = target / 30;
+            const timer = setInterval(() => {
+                current += increment;
+                if (current >= target) {
+                    counter.textContent = counter.textContent.replace(/\d+/, target);
+                    clearInterval(timer);
+                } else {
+                    counter.textContent = counter.textContent.replace(/\d+/, Math.floor(current));
+                }
+            }, 50);
+        }
     });
+}
+
+// Auto-actualización con indicador visual
+let autoRefreshTimer = 60000;
+const autoRefreshIndicator = document.createElement('div');
+autoRefreshIndicator.className = 'auto-refresh-indicator';
+autoRefreshIndicator.innerHTML = '<i class="fas fa-clock me-1"></i>Auto-actualización en <span id="countdown">60</span>s';
+document.body.appendChild(autoRefreshIndicator);
+
+let countdown = 60;
+const countdownInterval = setInterval(() => {
+    countdown--;
+    document.getElementById('countdown').textContent = countdown;
+    if (countdown <= 0) {
+        location.reload();
+    }
+}, 1000);
+
+// Limpiar timer si el usuario interactúa
+['click', 'scroll', 'keypress'].forEach(event => {
+    document.addEventListener(event, () => {
+        clearInterval(countdownInterval);
+        autoRefreshIndicator.style.display = 'none';
+    }, { once: true });
 });
 </script>
 
 <style>
-/* Estilos adicionales para el dashboard mejorado */
-.gradient-card-success {
-    background: linear-gradient(135deg, rgba(56, 142, 60, 0.1), rgba(76, 175, 80, 0.05));
-    border-left: 4px solid var(--verde);
+/* Variables CSS para consistencia */
+:root {
+    --success-color: #28a745;
+    --info-color: #17a2b8;
+    --warning-color: #ffc107;
+    --danger-color: #dc3545;
+    --light-color: #f8f9fa;
+    --dark-color: #343a40;
+    --border-radius: 12px;
+    --shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    --shadow-lg: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
 }
 
-.gradient-card-info {
-    background: linear-gradient(135deg, rgba(3, 218, 198, 0.1), rgba(3, 218, 198, 0.05));
-    border-left: 4px solid var(--accent-color);
+/* Animaciones */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
-.gradient-card-warning {
-    background: linear-gradient(135deg, rgba(255, 193, 7, 0.1), rgba(255, 193, 7, 0.05));
-    border-left: 4px solid var(--amarillo);
+@keyframes fadeUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
-.gradient-card-primary {
-    background: linear-gradient(135deg, rgba(128, 0, 0, 0.1), rgba(109, 35, 35, 0.05));
-    border-left: 4px solid var(--primary-color);
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
-.metric-badge {
-    width: 60px;
-    height: 60px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.5rem;
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
 }
 
-.progress-circle {
-    position: relative;
-    width: 60px;
-    height: 60px;
+.animate-fade-in {
+    animation: fadeIn 0.6s ease-out;
 }
 
-.progress-ring-circle {
-    transition: stroke-dasharray 0.35s;
-    transform: rotate(-90deg);
-    transform-origin: 50% 50%;
-    stroke-dasharray: 0 164;
+.animate-fade-up {
+    animation: fadeUp 0.6s ease-out;
+    animation-fill-mode: both;
 }
 
-.occupancy-chart {
-    width: 60px;
-    height: 60px;
-    border-radius: 50%;
-    background: rgba(255, 193, 7, 0.2);
-    position: relative;
-    overflow: hidden;
+.animate-slide-down {
+    animation: slideDown 0.4s ease-out;
 }
 
-.occupancy-fill {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background: linear-gradient(0deg, #FFC107, #FFD54F);
-    height: 65%;
-    transition: height 0.3s ease;
+.pulse {
+    animation: pulse 2s infinite;
 }
 
-.legend-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
+/* Header mejorado */
+.dashboard-header {
+    background: linear-gradient(135deg, rgba(0, 123, 255, 0.05) 0%, rgba(0, 123, 255, 0.02) 100%);
+    border: 1px solid rgba(0, 123, 255, 0.1);
+    transition: all 0.3s ease;
 }
 
-.legend-color {
-    width: 12px;
-    height: 12px;
-    border-radius: 2px;
-}
-
-.legend-color.available {
-    background: linear-gradient(135deg, #4CAF50, #66BB6A);
-}
-
-.legend-color.occupied {
-    background: linear-gradient(135deg, #F44336, #EF5350);
-}
-
-.legend-color.private {
-    background: linear-gradient(135deg, #800000, #BF3131);
-}
-
-.legend-color.reserved {
-    background: linear-gradient(135deg, #FF9800, #FFB74D);
-}
-
-.parking-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-    gap: 16px;
-    padding: 20px;
-}
-
-.parking-space {
-    position: relative;
-    height: 80px;
-    border-radius: 12px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    cursor: pointer;
-    overflow: hidden;
-}
-
-.parking-space:hover {
+.dashboard-header:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    box-shadow: var(--shadow-lg);
 }
 
-.parking-space.available {
-    background: linear-gradient(135deg, #E8F5E8, #F1F8E9);
-    border: 2px solid #4CAF50;
-    color: #2E7D32;
+/* Botón de actualizar mejorado */
+.btn-refresh {
+    transition: all 0.3s ease;
+    border-radius: 8px;
+    padding: 0.5rem 1.2rem;
 }
 
-.parking-space.occupied {
-    background: linear-gradient(135deg, #FFEBEE, #FFCDD2);
-    border: 2px solid #F44336;
-    color: #C62828;
+.btn-refresh:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
 }
 
-.parking-space.private {
-    border-style: dashed;
-    border-width: 3px;
-}
-
-.parking-space.reserved {
-    background: linear-gradient(135deg, #FFF3E0, #FFE0B2);
-    border: 2px solid #FF9800;
-    color: #E65100;
-}
-
-.space-number {
-    font-weight: 700;
-    font-size: 1.1rem;
-    margin-bottom: 4px;
-}
-
-.vehicle-info {
-    text-align: center;
-    font-size: 0.8rem;
-}
-
-.vehicle-plate {
-    font-weight: 600;
-    margin-top: 2px;
-}
-
-.time-occupied {
-    font-size: 0.7rem;
-    opacity: 0.8;
-    margin-top: 2px;
-}
-
-.available-icon {
-    font-size: 1.2rem;
-    opacity: 0.6;
-}
-
-.space-type-indicator {
-    position: absolute;
-    top: 6px;
-    right: 6px;
-    font-size: 0.8rem;
-    opacity: 0.7;
-}
-
-.activity-timeline {
+/* Cards de métricas mejoradas */
+.metric-card {
+    transition: all 0.3s ease;
+    border-radius: var(--border-radius);
+    overflow: hidden;
     position: relative;
 }
 
-.activity-item {
-    display: flex;
-    align-items: flex-start;
-    gap: 16px;
-    padding: 16px 0;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+.metric-card:hover {
+    transform: translateY(-8px);
+    box-shadow: var(--shadow-lg);
 }
 
-.activity-item:last-child {
-    border-bottom: none;
+.metric-card .card-body {
+    position: relative;
+    z-index: 2;
 }
 
-.activity-icon {
-    width: 40px;
-    height: 40px;
+.metric-icon {
+    width: 60px;
+    height: 60px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     color: white;
-    font-size: 0.9rem;
-    flex-shrink: 0;
+    font-size: 1.5rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    transition: all 0.3s ease;
 }
 
-.activity-content {
-    flex: 1;
+.metric-card:hover .metric-icon {
+    transform: scale(1.1) rotate(5deg);
 }
 
-.activity-header {
+/* Bordes coloreados para cards */
+.card-border-primary::before,
+.card-border-success::before,
+.card-border-info::before,
+.card-border-warning::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    /*background: linear-gradient(90deg, var(--primary-color), rgba(0, 123, 255, 0.6));
+    */border-radius: var(--border-radius) var(--border-radius) 0 0;
+}
+
+.card-border-success::before {
+    background: linear-gradient(90deg, var(--success-color), rgba(40, 167, 69, 0.6));
+}
+
+.card-border-info::before {
+    background: linear-gradient(90deg, var(--info-color), rgba(23, 162, 184, 0.6));
+}
+
+.card-border-warning::before {
+    background: linear-gradient(90deg, var(--warning-color), rgba(255, 193, 7, 0.6));
+}
+
+/* Badges suaves */
+.bg-primary-soft { background-color: rgba(0, 123, 255, 0.1) !important; }
+.bg-success-soft { background-color: rgba(40, 167, 69, 0.1) !important; }
+.bg-info-soft { background-color: rgba(23, 162, 184, 0.1) !important; }
+.bg-warning-soft { background-color: rgba(255, 193, 7, 0.1) !important; }
+
+/* Header de cards con gradiente */
+.bg-gradient-light {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+}
+
+/* Estilos de espacios de parqueo mejorados */
+.parking-legend {
+    border-bottom: 1px solid #e9ecef;
+    padding-bottom: 1rem;
+}
+
+.legend-item {
     display: flex;
-    justify-content: between;
     align-items: center;
-    margin-bottom: 4px;
+    gap: 0.5rem;
 }
 
-.activity-body {
-    color: #666;
-    font-size: 0.9rem;
+.legend-color {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
 }
 
-.notification-item {
-    padding: 12px;
-    border-radius: 8px;
-    background: rgba(0, 0, 0, 0.02);
-    margin-top: 12px;
+.parking-status-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
 }
 
-/* Animaciones mejoradas */
-@keyframes pulse {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.05); }
-    100% { transform: scale(1); }
+.parking-space {
+    position: relative;
+    aspect-ratio: 1;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    overflow: hidden;
+}
+
+.parking-space:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.parking-space.available {
+    background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+    border: 2px solid #4caf50;
 }
 
 .parking-space.occupied {
+    background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);
+    border: 2px solid #f44336;
+}
+
+.parking-space.vip {
+    background: linear-gradient(135deg, #fff8e1 0%, #ffecb3 100%);
+    border: 2px solid #ff9800;
+}
+
+.space-number {
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    font-size: 11px;
+    font-weight: bold;
+    background: rgba(255,255,255,0.9);
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.occupied-icon {
+    color: #f44336;
+    font-size: 1.3rem;
     animation: pulse 2s infinite;
 }
 
-@keyframes slideInRight {
-    from {
-        opacity: 0;
-        transform: translateX(20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateX(0);
-    }
+.vip-badge {
+    position: absolute;
+    bottom: 6px;
+    right: 6px;
+    color: #ff9800;
+    font-size: 0.9rem;
+    animation: pulse 3s infinite;
 }
 
-.activity-item {
-    animation: slideInRight 0.5s ease-out;
+.space-status-indicator {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #4caf50;
+}
+
+.parking-space.occupied .space-status-indicator {
+    background: #f44336;
+    animation: pulse 1.5s infinite;
+}
+
+/* Tabla moderna */
+.modern-table th {
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 1rem;
+}
+
+.modern-table td {
+    padding: 1rem;
+    vertical-align: middle;
+}
+
+.development-notice {
+    padding: 2rem;
+}
+
+/* Botones con efecto hover */
+.hover-lift {
+    transition: all 0.3s ease;
+}
+
+.hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+}
+
+/* Espaciado de letras */
+.letter-spacing {
+    letter-spacing: 0.5px;
+}
+
+/* Indicador de auto-actualización */
+.auto-refresh-indicator {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: rgba(0, 123, 255, 0.9);
+    color: white;
+    padding: 0.75rem 1rem;
+    border-radius: 25px;
+    font-size: 0.875rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 1050;
+    animation: fadeIn 0.5s ease-out;
+}
+
+/* Progreso bar personalizado */
+.progress {
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.progress-bar {
+    transition: width 1s ease-in-out;
 }
 
 /* Responsive mejorado */
+@media (max-width: 1200px) {
+    .parking-status-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+    }
+}
+
 @media (max-width: 768px) {
-    .parking-grid {
-        grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
-        gap: 12px;
-        padding: 16px;
+    .parking-status-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
     }
     
-    .parking-space {
-        height: 70px;
+    .metric-card .card-body {
+        padding: 1.5rem !important;
     }
     
-    .metric-badge {
+    .metric-icon {
         width: 50px;
         height: 50px;
         font-size: 1.2rem;
     }
+    
+    .dashboard-header {
+        margin-bottom: 1rem;
+    }
+    
+    .dashboard-header .d-flex {
+        flex-direction: column;
+        gap: 1rem;
+        text-align: center;
+    }
 }
-</style>
+
+@media (max-width: 576px) {
+    .parking-status-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 6px;
+    }
+    
+    .space-number {
+        font-size: 9px;
+        width: 16px;
+        height: 16px;
+    }
+    
+    .occupied-icon {
+        font-size: 1rem;
+    }
+    
+    .vip-badge {
+        font-size: 0.7rem;
+    }
+    
+    .auto-refresh-indicator {
+        bottom: 10px;
+        right: 10px;
+        padding: 0.5rem 0.75rem;
+        font-size: 0.8rem;
+    }
+}
+
+/* Efectos de carga */
+.loading-shimmer {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+}
+
+/* Scroll suave */
+html {
+    scroll-behavior: smooth;
+}
+
+/* Focus states mejorados */
+.btn:focus,
+.parking-space:focus {
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+    outline: none;
+}
+
+/* Hover effects para tabla */
+.modern-table tbody tr {
+    transition: all 0.2s ease;
+}
+
+.modern-table tbody tr:hover {
+    background-color: rgba(0, 123, 255, 0.05);
+    transform: translateX(2px);
+}
+.bg-secondary-soft { 
+    background-color: rgba(108, 117, 125, 0.1) !important; 
+    color: #6c757d !important;
+}
+
+.bg-danger-soft { 
+    background-color: rgba(220, 53, 69, 0.1) !important; 
+    color: #dc3545 !important;
+}
+
+.infraction-row {
+    transition: all 0.2s ease;
+}
+
+.infraction-row:hover {
+    background-color: rgba(255, 193, 7, 0.05) !important;
+    transform: translateX(2px);
+}
+
+.infraction-icon {
+    width: 20px;
+    text-align: center;
+}
+
+.no-data-message {
+    padding: 2rem;
+}
+
+.infractions-summary .badge {
+    font-size: 0.75rem;
+}
+
+.font-monospace {
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace !important;
+}
+
+/* Responsive para tabla de infracciones */
+@media (max-width: 768px) {
+    .table-responsive table {
+        font-size: 0.875rem;
+    }
+    
+    .infraction-row td {
+        padding: 0.75rem 0.5rem;
+    }
+    
+    .infraction-row .d-flex {
+        flex-direction: column;
+        align-items: flex-start !important;
+    }
+    
+    .infraction-icon {
+        margin-bottom: 0.25rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .table-responsive {
+        font-size: 0.8rem;
+    }
+    
+    .badge {
+        font-size: 0.65rem !important;
+    }
+    
+    .infractions-summary {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+}
 {% endblock %}

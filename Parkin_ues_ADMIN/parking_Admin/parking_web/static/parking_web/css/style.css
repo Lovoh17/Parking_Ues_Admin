@@ -47,7 +47,6 @@
         .navbar {
             height: var(--navbar-height);
             background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
-            /*backdrop-filter: blur(10px);*/
             position: fixed;
             top: 0;
             left: var(--sidebar-width);

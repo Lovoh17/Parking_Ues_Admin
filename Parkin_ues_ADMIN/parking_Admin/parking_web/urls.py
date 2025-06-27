@@ -11,8 +11,8 @@ urlpatterns = [
     
     # URLs de usuarios
     path('usuarios/nuevo/', GestionUsuarioView.as_view(), name='nuevo_usuario'),
-    path('usuarios/<str:username>/editar/', GestionUsuarioView.as_view(), name='editar_usuario'),
-    path('usuarios/<str:username>/', detalle_usuario, name='detalle_usuario'),
+    path('usuarios/<str:user_id>/editar/', GestionUsuarioView.as_view(), name='editar_usuario'),
+    path('usuarios/<str:user_id>/', detalle_usuario, name='detalle_usuario'),
     path('usuarios/', listar_usuarios, name='listar_usuarios'),
     
     # URLs de estacionamientos

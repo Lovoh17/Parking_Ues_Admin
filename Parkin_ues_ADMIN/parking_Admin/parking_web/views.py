@@ -29,8 +29,8 @@ try:
     import firebase_admin
     from firebase_admin import credentials, db as realtime_db
     
-    CREDENTIALS_PATH = Path(__file__).resolve().parent.parent / 'config' / 'firebase_config.json'
-    DATABASE_URL = 'https://parkingues-default-rtdb.firebaseio.com/'
+    CREDENTIALS_PATH = Path(__file__).resolve().parent.parent / 'config' / 'serviceAccountKey.json'
+    DATABASE_URL = 'https://parkingues-69cfa-default-rtdb.firebaseio.com/'
     
     if CREDENTIALS_PATH.exists() and not firebase_admin._apps:
         cred = credentials.Certificate(str(CREDENTIALS_PATH))
@@ -79,102 +79,191 @@ def dashboard(request):
         })
 
     try:
-        # 1. Obtener datos de espacios de parqueo
-        espacios_ref = realtime_db.reference('paking')
+        # 1. Datos de espacios de parqueo
+        espacios_ref = realtime_db.reference('parking_spaces')
         espacios_data = espacios_ref.get() or {}
         
-        # Procesar espacios
         espacios_lista = []
         espacios_disponibles = 0
         vehiculos_actuales = 0
-        
+        espacios_vip = 0
+
         for espacio_id, espacio_data in espacios_data.items():
             if not isinstance(espacio_data, dict):
                 continue
                 
-            disponible = espacio_data.get('disponible', True)
+            ocupado = espacio_data.get('occupied', False)
+            es_vip = espacio_data.get('section', 'normal') == 'vip'
+            
             espacio = {
-                'numero': espacio_data.get('numero', espacio_id),
-                'disponible': disponible,
-                'placa': espacio_data.get('placa', ''),
-                'tipo': espacio_data.get('tipo', 'publico')
+                'id': espacio_id,
+                'numero': espacio_data.get('spaceNumber', espacio_id.split('_')[-1]),
+                'disponible': not ocupado,
+                'ocupado_por': espacio_data.get('occupiedByUserId', ''),
+                'tipo': 'vip' if es_vip else 'normal',
+                'tiempo_ocupado': espacio_data.get('formattedOccupationTime', ''),
+                'ultima_actualizacion': espacio_data.get('lastUpdated', ''),
+                'hora_ocupacion': espacio_data.get('occupationStartTime', '')
             }
             
             espacios_lista.append(espacio)
-            if disponible:
+            if not ocupado:
                 espacios_disponibles += 1
             else:
                 vehiculos_actuales += 1
+                
+            if es_vip:
+                espacios_vip += 1
 
-        # 2. Obtener registros de vehículos para calcular ingresos
-        registros_ref = realtime_db.reference('registros_vehiculos')
-        registros_data = registros_ref.get() or {}
+        capacidad_total = len(espacios_lista)
+        ocupacion_porcentaje = round((vehiculos_actuales / capacidad_total) * 100) if capacidad_total > 0 else 0
+
+        # 2. Datos de usuarios
+        usuarios_ref = realtime_db.reference('users')
+        usuarios_data = usuarios_ref.get() or {}
+        total_usuarios = len(usuarios_data)
+        usuarios_activos = sum(1 for u in usuarios_data.values() if isinstance(u, dict) and u.get('active', False))
+
+        # 3. Datos de transacciones
+        transacciones_ref = realtime_db.reference('transactions')
+        transacciones_data = transacciones_ref.get() or {}
         
-        # Calcular ingresos
         hoy = datetime.now().date()
         ingresos_hoy = 0
         ingresos_mes = 0
-        ingresos_semana = [0] * 7  # Para cada día de la semana
-        entradas_por_tipo = defaultdict(int)
+        total_transacciones = 0
         
-        for registro_id, registro_data in registros_data.items():
-            if not isinstance(registro_data, dict):
+        for trans_id, trans_data in transacciones_data.items():
+            if not isinstance(trans_data, dict):
                 continue
                 
-            # Procesar fecha y tarifa
             try:
-                fecha_str = registro_data.get('hora_entrada', '')
-                if not fecha_str:
-                    continue
+                monto = float(trans_data.get('amount', 0))
+                fecha_str = trans_data.get('timestamp', '')
+                if fecha_str:
+                    fecha = datetime.strptime(fecha_str, '%Y-%m-%d %H:%M:%S').date()
                     
-                fecha = datetime.strptime(fecha_str, '%Y-%m-%d %H:%M:%S').date()
-                tarifa = float(registro_data.get('tarifa', 0))
-                tipo_vehiculo = registro_data.get('tipo_vehiculo', 'Otro')
-                
-                # Ingresos hoy
-                if fecha == hoy:
-                    ingresos_hoy += tarifa
-                
-                # Ingresos este mes
-                if fecha.month == hoy.month and fecha.year == hoy.year:
-                    ingresos_mes += tarifa
-                
-                # Ingresos por día de la semana (últimos 7 días)
-                if (hoy - fecha).days < 7:
-                    dia_semana = fecha.weekday()
-                    ingresos_semana[dia_semana] += tarifa
-                
-                # Conteo por tipo de vehículo
-                entradas_por_tipo[tipo_vehiculo] += 1
-                
-            except (ValueError, TypeError) as e:
-                logging.error(f"Error procesando registro {registro_id}: {str(e)}")
+                    total_transacciones += 1
+                    if fecha == hoy:
+                        ingresos_hoy += monto
+                    if fecha.month == hoy.month and fecha.year == hoy.year:
+                        ingresos_mes += monto
+            except (ValueError, TypeError):
                 continue
 
-        # 3. Preparar datos para el template
-        dias_semana = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
+        # 4. Datos de infracciones mejorados
+        infracciones_ref = realtime_db.reference('infractions')
+        infracciones_data = infracciones_ref.get() or {}
+        infracciones_hoy = 0
+        total_infracciones = len(infracciones_data)
+        infracciones_lista = []
         
-        # Ordenar ingresos de la semana para que coincida con días_semana
-        ingresos_semana_ordenados = [
-            ingresos_semana[i] for i in range(7)
-        ]
-        
-        # Datos para gráfico de tipos de vehículos
-        tipos_vehiculos = ['Residente', 'Oficial', 'No Residentes']
-        entradas_por_tipo_ordenadas = [
-            entradas_por_tipo.get(tipo, 0) for tipo in tipos_vehiculos
-        ]
-        
+        # Función auxiliar para formatear timestamp
+        def formatear_fecha_infraccion(timestamp_data):
+            if not isinstance(timestamp_data, dict):
+                return 'Fecha no disponible'
+            
+            try:
+                year = timestamp_data.get('year', 0)
+                month = timestamp_data.get('month', 0)
+                day = timestamp_data.get('day', 0)
+                hours = timestamp_data.get('hours', 0)
+                minutes = timestamp_data.get('minutes', 0)
+                
+                fecha = datetime(year, month, day, hours, minutes)
+                return fecha.strftime('%d/%m/%Y %H:%M')
+            except (ValueError, TypeError):
+                return 'Fecha inválida'
+
+        def formatear_fecha_corta(timestamp_data):
+            if not isinstance(timestamp_data, dict):
+                return None
+            
+            try:
+                year = timestamp_data.get('year', 0)
+                month = timestamp_data.get('month', 0)
+                day = timestamp_data.get('day', 0)
+                
+                fecha = datetime(year, month, day)
+                return fecha.date()
+            except (ValueError, TypeError):
+                return None
+
+        # Procesar infracciones
+        for inf_id, inf_data in infracciones_data.items():
+            if not isinstance(inf_data, dict):
+                continue
+            
+            timestamp_data = inf_data.get('timestamp', {})
+            fecha_formateada = formatear_fecha_infraccion(timestamp_data)
+            fecha_obj = formatear_fecha_corta(timestamp_data)
+            
+            # Contar infracciones de hoy
+            if fecha_obj and fecha_obj == hoy:
+                infracciones_hoy += 1
+            
+            # Agregar a la lista para mostrar
+            infraccion = {
+                'id': inf_id,
+                'infraction_id': inf_data.get('infractionId', inf_id),
+                'descripcion': inf_data.get('description', 'Sin descripción'),
+                'tipo': inf_data.get('infractionType', 'Desconocido'),
+                'usuario_id': inf_data.get('userId', 'No identificado'),
+                'session_id': inf_data.get('sessionId', 'Sin sesión'),
+                'multa': inf_data.get('fine', 0),
+                'estado': inf_data.get('status', 'pending'),
+                'fecha_completa': fecha_formateada,
+                'fecha_obj': fecha_obj
+            }
+            
+            infracciones_lista.append(infraccion)
+
+        # Ordenar infracciones por fecha (más recientes primero)
+        infracciones_lista.sort(key=lambda x: x['fecha_obj'] or datetime.min.date(), reverse=True)
+
+        # 5. Datos de vehículos
+        vehiculos_ref = realtime_db.reference('vehicles')
+        vehiculos_data = vehiculos_ref.get() or {}
+        total_vehiculos = len(vehiculos_data)
+        vehiculos_registrados_hoy = sum(
+            1 for v in vehiculos_data.values() 
+            if isinstance(v, dict) and 
+            v.get('registrationDate', '').startswith(hoy.strftime('%Y-%m-%d'))
+        )
+
+        # Preparar contexto
         context = {
-            'ingresos_hoy': round(ingresos_hoy, 2),
-            'vehiculos_actuales': vehiculos_actuales,
+            # Espacios
+            'espacios': espacios_lista[:8],  # Mostrar solo 8 para el preview
             'espacios_disponibles': espacios_disponibles,
-            'capacidad_total': len(espacios_lista),
+            'vehiculos_actuales': vehiculos_actuales,
+            'capacidad_total': capacidad_total,
+            'ocupacion_porcentaje': ocupacion_porcentaje,
+            'espacios_vip': espacios_vip,
+            
+            # Usuarios
+            'total_usuarios': total_usuarios,
+            'usuarios_activos': usuarios_activos,
+            'usuarios_nuevos_hoy': 0,  # Puedes agregar esta métrica
+            
+            # Transacciones
+            'ingresos_hoy': round(ingresos_hoy, 2),
             'ingresos_mes': round(ingresos_mes, 2),
-            'dias_semana': dias_semana,
-            'ingresos_semana': ingresos_semana_ordenados,
-            'entradas_por_tipo': entradas_por_tipo_ordenadas,
-            'espacios': espacios_lista[:8],  # Mostrar solo los primeros 8 espacios
+            'total_transacciones': total_transacciones,
+            'transacciones_hoy': sum(1 for t in transacciones_data.values() 
+                                   if isinstance(t, dict) and 
+                                   t.get('timestamp', '').startswith(hoy.strftime('%Y-%m-%d'))),
+            
+            # Infracciones - datos reales
+            'infracciones_hoy': infracciones_hoy,
+            'total_infracciones': total_infracciones,
+            'infracciones_lista': infracciones_lista[:5],  # Mostrar solo las 5 más recientes
+            
+            # Vehículos
+            'total_vehiculos': total_vehiculos,
+            'vehiculos_registrados_hoy': vehiculos_registrados_hoy,
+            
+            # General
             'ultima_actualizacion': datetime.now().strftime('%d/%m/%Y %H:%M')
         }
         
@@ -182,18 +271,15 @@ def dashboard(request):
 
     except Exception as e:
         logging.error(f"Error en dashboard: {str(e)}")
-        # En caso de error, mostrar datos básicos
         return render(request, 'home.html', {
-            'error': 'Error al cargar datos en tiempo real',
+            'error': 'Error al cargar datos del sistema',
+            'espacios': [],
+            'total_usuarios': 0,
             'ingresos_hoy': 0,
-            'vehiculos_actuales': 0,
-            'espacios_disponibles': 0,
-            'capacidad_total': 0,
-            'ingresos_mes': 0,
-            'dias_semana': ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'],
-            'ingresos_semana': [0]*7,
-            'entradas_por_tipo': [0, 0, 0],
-            'espacios': []
+            'infracciones_hoy': 0,
+            'total_infracciones': 0,
+            'infracciones_lista': [],
+            'total_vehiculos': 0
         })
 
 ################################################### lOGIN ########################################################
@@ -449,48 +535,152 @@ def detalle_registro(request, registro_id):
     
     return render(request, 'detalle_registro.html', context)
 
+from datetime import datetime
+import json
+
+def formatear_timestamp(timestamp_data):
+    """
+    Convierte el objeto timestamp de Firebase a formato legible
+    """
+    if not timestamp_data:
+        return "-"
+    
+    try:
+        # Si es un string JSON, parsearlo
+        if isinstance(timestamp_data, str):
+            timestamp_data = json.loads(timestamp_data)
+        
+        # Si es un diccionario con la estructura de Firebase timestamp
+        if isinstance(timestamp_data, dict):
+            # Obtener el timestamp en segundos
+            seconds = timestamp_data.get('_seconds', 0)
+            if not seconds:
+                # Intentar con la estructura alternativa
+                seconds = timestamp_data.get('seconds', 0)
+            
+            if seconds:
+                # Convertir a datetime
+                dt = datetime.fromtimestamp(seconds)
+                return dt.strftime('%d/%m/%Y %H:%M:%S')
+        
+        return "-"
+    except Exception as e:
+        print(f"Error formateando timestamp: {e}")
+        return "-"
+
+def calcular_tiempo_ocupacion(inicio_timestamp):
+    """
+    Calcula el tiempo transcurrido desde que se ocupó el espacio
+    """
+    if not inicio_timestamp:
+        return "-"
+    
+    try:
+        # Si es un string JSON, parsearlo
+        if isinstance(inicio_timestamp, str):
+            inicio_timestamp = json.loads(inicio_timestamp)
+        
+        if isinstance(inicio_timestamp, dict):
+            seconds = inicio_timestamp.get('_seconds', 0) or inicio_timestamp.get('seconds', 0)
+            
+            if seconds:
+                inicio = datetime.fromtimestamp(seconds)
+                ahora = datetime.now()
+                diferencia = ahora - inicio
+                
+                # Formatear la diferencia
+                horas = diferencia.seconds // 3600
+                minutos = (diferencia.seconds % 3600) // 60
+                
+                if diferencia.days > 0:
+                    return f"{diferencia.days} día(s), {horas}h {minutos}m"
+                elif horas > 0:
+                    return f"{horas}h {minutos}m"
+                else:
+                    return f"{minutos}m"
+        
+        return "-"
+    except Exception as e:
+        print(f"Error calculando tiempo de ocupación: {e}")
+        return "-"
+
 def gestion_espacios(request):
     """
-    Vista para gestionar espacios de parqueo (4 públicos y 4 privados)
+    Vista para gestionar espacios de parqueo (4 normales y 4 VIP)
     """
     if not FIREBASE_ENABLED:
         return render(request, 'estacionamientos.html', {
             'error': 'Firebase no está configurado correctamente',
             'espacios': []
         })
-
+    
     try:
-        espacios_ref = realtime_db.reference('paking')
+        espacios_ref = realtime_db.reference('parking_spaces')
         espacios_data = espacios_ref.get()
-        if not espacios_data or isinstance(espacios_data, str) or len(espacios_data) < 8:
-            espacios_data = espacios_ref.get() or {}
-
+        
+        if not espacios_data or isinstance(espacios_data, str):
+            espacios_data = {}
+        
         espacios_lista = []
         for espacio_id, espacio_data in espacios_data.items():
             if not isinstance(espacio_data, dict):
                 continue
-                
+            
+            # Determinar tipo basado en el ID o la sección
+            tipo = 'privado' if espacio_data.get('section') == 'vip' else 'publico'
+            
+            # Obtener número del espacio (último carácter del ID)
+            numero = espacio_id.split('_')[-1]
+            
+            # Formatear los timestamps
+            hora_ocupacion_raw = espacio_data.get('occupationStartTime')
+            ultima_actualizacion_raw = espacio_data.get('lastUpdated')
+            
+            # Calcular tiempo de ocupación si está ocupado
+            tiempo_ocupacion = "-"
+            if not espacio_data.get('occupied', False) == False:  # Si está ocupado
+                tiempo_ocupacion = calcular_tiempo_ocupacion(hora_ocupacion_raw)
+            
             espacios_lista.append({
                 'id': espacio_id,
-                'numero': espacio_data.get('numero', ''),
-                'tipo': espacio_data.get('tipo', 'publico'),
-                'disponible': espacio_data.get('disponible', True),
-                'placa': espacio_data.get('placa', ''),
-                'hora_ocupacion': espacio_data.get('hora_ocupacion', ''),
-                'ultima_actualizacion': espacio_data.get('ultima_actualizacion', '')
+                'numero': numero,
+                'tipo': tipo,
+                'disponible': not espacio_data.get('occupied', False),
+                'placa': espacio_data.get('licensePlate', ''),  # Incluir placa si está disponible
+                'hora_ocupacion': formatear_timestamp(hora_ocupacion_raw),
+                'ultima_actualizacion': formatear_timestamp(ultima_actualizacion_raw),
+                'ocupado_por': espacio_data.get('occupiedByUserId', ''),
+                'tiempo_ocupacion': tiempo_ocupacion,
+                'reservado': espacio_data.get('reserved', False)
             })
-        espacios_lista.sort(key=lambda x: x['numero'])
-
+        
+        # Ordenar espacios por tipo y número
+        espacios_lista.sort(key=lambda x: (x['tipo'], int(x['numero']) if x['numero'].isdigit() else 0))
+        
+        # Estadísticas adicionales
+        total_espacios = len(espacios_lista)
+        espacios_ocupados = len([e for e in espacios_lista if not e['disponible']])
+        espacios_disponibles = total_espacios - espacios_ocupados
+        
+        # Calcular porcentaje de ocupación
+        porcentaje_ocupacion = 0
+        if total_espacios > 0:
+            porcentaje_ocupacion = round((espacios_ocupados / total_espacios) * 100)
+        
         context = {
             'espacios': espacios_lista,
+            'total_espacios': total_espacios,
+            'espacios_ocupados': espacios_ocupados,
+            'espacios_disponibles': espacios_disponibles,
+            'porcentaje_ocupacion': porcentaje_ocupacion,
             'request': request
         }
-
+        
         return render(request, 'estacionamientos.html', context)
-
+        
     except Exception as e:
         print(f"Error en gestion_espacios: {str(e)}")
-        return render(request, 'espacios.html', {
+        return render(request, 'estacionamientos.html', {
             'error': 'Error al obtener información de espacios',
             'espacios': []
         })
@@ -514,19 +704,44 @@ def listar_usuarios(request):
         for user_id, user_data in all_users.items():
             if not isinstance(user_data, dict):
                 continue
+                
+            # Mapear los campos según la estructura de Firebase
             usuario = {
-                'id': user_data.get('username', user_id),  # Usamos el username como ID,
-                'username': user_data.get('username', ''),
-                'nombre_completo': user_data.get('nombre_completo', user_data.get('username', '')),
+                'id': user_data.get('userId', user_id),  # Usar userId como ID principal
+                'username': user_data.get('name', ''),  # 'name' es el nombre de usuario
+                'nombre_completo': f"{user_data.get('name', '')} {user_data.get('apellido', '')}".strip(),
                 'email': user_data.get('email', ''),
-                'rol': user_data.get('role', 'client'),  # Nota: 'role' en Firebase, 'rol' en nuestro dict
-                'activo': user_data.get('activo', True),
-                'foto_perfil': user_data.get('foto_perfil'),
+                'rol': user_data.get('role', 'cliente'),  # Mapear role a rol
+                'activo': user_data.get('active', True),  # Mapear active a activo
+                'foto_perfil': user_data.get('profileImage'),  # Agregar foto de perfil si existe
+                'telefono': user_data.get('telefono', user_data.get('phone', '')),
+                'plan_type': user_data.get('planType', 'none'),
+                'user_firebase_id': user_id,  # Guardar el ID de Firebase
                 'ultimo_login': datetime.now()  # Valor por defecto
             }
-            if 'ultimo_login' in user_data and user_data['ultimo_login']:
+            
+            # Procesar fecha de creación si existe
+            if 'createdAt' in user_data and user_data['createdAt']:
                 try:
-                    usuario['ultimo_login'] = datetime.strptime(user_data['ultimo_login'], '%Y-%m-%d %H:%M:%S')
+                    # Convertir timestamp de Firebase a datetime
+                    if isinstance(user_data['createdAt'], (int, float)):
+                        usuario['fecha_registro'] = datetime.fromtimestamp(user_data['createdAt'] / 1000)
+                    elif isinstance(user_data['createdAt'], str):
+                        usuario['fecha_registro'] = datetime.strptime(user_data['createdAt'], '%Y-%m-%d %H:%M:%S')
+                    else:
+                        usuario['fecha_registro'] = datetime.now()
+                except (ValueError, TypeError):
+                    usuario['fecha_registro'] = datetime.now()
+            else:
+                usuario['fecha_registro'] = datetime.now()
+            
+            # Procesar último login si existe
+            if 'lastLogin' in user_data and user_data['lastLogin']:
+                try:
+                    if isinstance(user_data['lastLogin'], (int, float)):
+                        usuario['ultimo_login'] = datetime.fromtimestamp(user_data['lastLogin'] / 1000)
+                    elif isinstance(user_data['lastLogin'], str):
+                        usuario['ultimo_login'] = datetime.strptime(user_data['lastLogin'], '%Y-%m-%d %H:%M:%S')
                 except (ValueError, TypeError):
                     pass
                     
@@ -552,6 +767,8 @@ def listar_usuarios(request):
         
         if estado != 'todos':
             usuarios_filtrados = [u for u in usuarios_filtrados if u['activo'] == (estado == 'activos')]
+
+        # Paginación
         page = int(request.GET.get('page', 1))
         items_per_page = 10
         total_items = len(usuarios_filtrados)
@@ -561,8 +778,16 @@ def listar_usuarios(request):
         end_idx = start_idx + items_per_page
         usuarios_paginados = usuarios_filtrados[start_idx:end_idx]
 
-        # Obtener roles únicos (case insensitive)
+        # Obtener roles únicos
         roles_disponibles = sorted(list({u['rol'].capitalize() for u in usuarios_lista if u['rol']}))
+
+        # Calcular estadísticas
+        stats = {
+            'total': len(usuarios_lista),
+            'activos': len([u for u in usuarios_lista if u['activo']]),
+            'inactivos': len([u for u in usuarios_lista if not u['activo']]),
+            'filtrados': len(usuarios_filtrados)
+        }
 
         context = {
             'usuarios': {
@@ -578,14 +803,17 @@ def listar_usuarios(request):
                 'next_page_number': page + 1 if page < total_pages else total_pages,
                 'start_index': start_idx + 1,
                 'end_index': min(end_idx, total_items),
+                'page_range': range(1, total_pages + 1)
             },
             'roles': roles_disponibles,
+            'stats': stats,
             'request': request,
             'filtros': {
                 'busqueda': busqueda,
                 'rol': rol,
                 'estado': estado
-            }
+            },
+            'modo_offline': False  # Agregar indicador de modo offline
         }
 
         return render(request, 'Usuarios.html', context)
@@ -602,60 +830,62 @@ def listar_usuarios(request):
                     'count': 0
                 },
                 'has_previous': False,
-                'has_next': False
+                'has_next': False,
+                'page_range': range(1, 2)
             },
             'roles': [],
-            'request': request
+            'stats': {'total': 0, 'activos': 0, 'inactivos': 0, 'filtrados': 0},
+            'request': request,
+            'modo_offline': True
         })
 
-def detalle_usuario(request, username):
+
+def detalle_usuario(request, user_id):
     if not FIREBASE_ENABLED:
         return render(request, 'Detalles_Usuarios.html', {
             'error': 'Firebase no está configurado correctamente'
         })
 
     try:
-        # Buscar usuario por username en Firebase
+        # Buscar usuario directamente por su ID de Firebase
         users_ref = realtime_db.reference('users')
-        all_users = users_ref.get() or {}
+        user_data = users_ref.child(user_id).get()
         
-        user_data = None
-        user_id = None
-        
-        # Buscar en todos los usuarios el que coincida con el username
-        for uid, data in all_users.items():
-            if isinstance(data, dict) and data.get('username') == username:
-                user_data = data
-                user_id = uid
-                break
-                
-        if not user_data:
+        if not user_data or not isinstance(user_data, dict):
             raise Http404("Usuario no encontrado")
 
         # Procesar fechas
-        def parse_date(date_str):
-            if date_str and isinstance(date_str, str):
+        def parse_date(date_value):
+            if date_value:
                 try:
-                    return datetime.strptime(date_str, '%Y-%m-%d %H:%M:%S')
-                except ValueError:
-                    return datetime.now()
+                    if isinstance(date_value, (int, float)):
+                        return datetime.fromtimestamp(date_value / 1000)
+                    elif isinstance(date_value, str):
+                        return datetime.strptime(date_value, '%Y-%m-%d %H:%M:%S')
+                except (ValueError, TypeError):
+                    pass
             return datetime.now()
 
         # Estructurar datos para el template
         usuario = {
             'id': user_id,
-            'username': username,
-            'nombre_completo': user_data.get('nombre_completo', username),
+            'user_id': user_data.get('userId', user_id),
+            'username': user_data.get('name', user_data.get('userId', user_id)),
+            'nombre_completo': f"{user_data.get('name', '')} {user_data.get('apellido', '')}".strip(),
+            'nombre': user_data.get('name', ''),
+            'apellido': user_data.get('apellido', ''),
             'email': user_data.get('email', ''),
-            'rol': user_data.get('role', 'client').capitalize(),
-            'fecha_registro': parse_date(user_data.get('fecha_registro')),
-            'ultimo_login': parse_date(user_data.get('ultimo_login')),
-            'activo': user_data.get('activo', True),
-            'foto_perfil': user_data.get('foto_perfil'),
-            'telefono': user_data.get('telefono', 'No especificado'),
+            'rol': user_data.get('role', 'cliente').capitalize(),
+            'fecha_registro': parse_date(user_data.get('createdAt')),
+            'ultimo_login': parse_date(user_data.get('lastLogin')),
+            'activo': user_data.get('active', True),
+            'foto_perfil': user_data.get('profileImage'),
+            'telefono': user_data.get('telefono', user_data.get('phone', 'No especificado')),
             'direccion': user_data.get('direccion', 'No especificada'),
+            'plan_type': user_data.get('planType', 'none'),
             'permisos': user_data.get('permisos', []),
-            'notas': user_data.get('notas', 'Sin notas adicionales')
+            'notas': user_data.get('notas', 'Sin notas adicionales'),
+            'firebase_id': user_id
         }
 
         context = {
@@ -667,11 +897,48 @@ def detalle_usuario(request, username):
     except Http404:
         raise
     except Exception as e:
-        logging.error(f"Error al obtener detalle de usuario {username}: {str(e)}")
+        logging.error(f"Error al obtener detalle de usuario {user_id}: {str(e)}")
         return render(request, 'Detalles_Usuarios.html', {
             'error': 'Error al cargar los datos del usuario',
             'usuario': None
         })
+
+
+# Función adicional para verificar conectividad (para el template)
+def check_connectivity(request):
+    """Endpoint para verificar conectividad con Firebase"""
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        try:
+            # Intentar una operación simple en Firebase
+            users_ref = realtime_db.reference('users')
+            users_ref.get()
+            return JsonResponse({'online': True})
+        except Exception:
+            return JsonResponse({'online': False})
+    return JsonResponse({'online': False})
+
+
+# Función adicional para sincronización manual
+def sync_users(request):
+    """Endpoint para sincronización manual de usuarios"""
+    if request.method == 'POST' and request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        try:
+            # Aquí puedes implementar lógica de sincronización
+            # Por ejemplo, limpiar caché, recargar datos, etc.
+            users_ref = realtime_db.reference('users')
+            users_count = len(users_ref.get() or {})
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'Sincronización completada. {users_count} usuarios encontrados.'
+            })
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'message': f'Error en la sincronización: {str(e)}'
+            })
+    
+    return JsonResponse({'success': False, 'message': 'Método no permitido'})
 
 class ReporteVehiculosView(View):
     template_name = 'Reportes.html'

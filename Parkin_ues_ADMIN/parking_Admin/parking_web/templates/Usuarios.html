@@ -27,16 +27,13 @@
                     </h1>
                     <p class="text-muted mb-0">Administración de cuentas de usuario del sistema</p>
                     <!-- Estadísticas -->
-                    {% if stats %}
                     <div class="mt-2">
-                        <span class="badge bg-info me-2">Total: {{ stats.total }}</span>
-                        <span class="badge bg-success me-2">Activos: {{ stats.activos }}</span>
-                        <span class="badge bg-warning me-2">Inactivos: {{ stats.inactivos }}</span>
-                        {% if stats.filtrados != stats.total %}
-                        <span class="badge bg-secondary">Filtrados: {{ stats.filtrados }}</span>
+                        <span class="badge bg-info me-2">Total: {{ usuarios.paginator.count }}</span>
+                        <span class="badge bg-success me-2">Activos: {{ usuarios.paginator.count|default:0 }}</span>
+                        {% if usuarios.paginator.count > usuarios.object_list|length %}
+                        <span class="badge bg-secondary">Filtrados: {{ usuarios.object_list|length }}</span>
                         {% endif %}
                     </div>
-                    {% endif %}
                 </div>
                 <div class="d-flex gap-2">
                     <!-- Botón de sincronización -->
@@ -60,7 +57,7 @@
                         <div class="col-md-4">
                             <label for="busqueda" class="form-label">Buscar</label>
                             <input type="text" class="form-control" id="busqueda" name="busqueda" 
-                                   placeholder="Nombre o usuario..." value="{{ filtros.busqueda }}">
+                                   placeholder="Nombre, email o teléfono..." value="{{ filtros.busqueda }}">
                         </div>
                         <div class="col-md-3">
                             <label for="rol" class="form-label">Rol</label>
@@ -107,8 +104,9 @@
                                     <th>Nombre Completo</th>
                                     <th>Rol</th>
                                     <th>Email</th>
+                                    <th>Teléfono</th>
+                                    <th>Plan</th>
                                     <th>Último Login</th>
-                                    <th>Estado</th>
                                     <th>Acciones</th>
                                 </tr>
                             </thead>
@@ -124,7 +122,7 @@
                                             {% else %}
                                             <div class="avatar-placeholder rounded-circle me-2 bg-secondary text-white d-flex align-items-center justify-content-center" 
                                                  style="width: 32px; height: 32px;">
-                                                {{ usuario.username|first|upper }}
+                                                {{ usuario.nombre_completo|first|upper }}
                                             </div>
                                             {% endif %}
                                             <strong>{{ usuario.username }}</strong>
@@ -141,20 +139,19 @@
                                         {% endif %}
                                     </td>
                                     <td>{{ usuario.email }}</td>
+                                    <td>{{ usuario.telefono|default:"-" }}</td>
+                                    <td>
+                                        <span class="badge {% if usuario.plan == 'premium' %}bg-success{% else %}bg-light text-dark{% endif %}">
+                                            {{ usuario.plan|default:"none"|capfirst }}
+                                        </span>
+                                    </td>
                                     <td>{{ usuario.ultimo_login|date:"d/m/Y H:i" }}</td>
                                     <td>
-                                        {% if usuario.activo %}
-                                            <span class="badge bg-success">Activo</span>
-                                        {% else %}
-                                            <span class="badge bg-warning text-dark">Inactivo</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>
                                         <div class="d-flex gap-2">
-                                            <a href="{% url 'detalle_usuario' usuario.username%}" class="btn btn-sm btn-info" title="Ver detalles">
+                                            <a href="{% url 'detalle_usuario' usuario.id %}" class="btn btn-sm btn-info" title="Ver detalles">
                                                 <i class="fas fa-eye"></i>
                                             </a>
-                                            <a href="{% url 'editar_usuario' usuario.username%}" class="btn btn-sm btn-primary" title="Editar">
+                                            <a href="{% url 'editar_usuario' usuario.id %}" class="btn btn-sm btn-primary" title="Editar">
                                                 <i class="fas fa-edit"></i>
                                             </a>
                                         </div>
@@ -162,7 +159,7 @@
                                 </tr>
                                 {% empty %}
                                 <tr>
-                                    <td colspan="8" class="text-center py-4">
+                                    <td colspan="10" class="text-center py-4">
                                         <i class="fas fa-info-circle me-2"></i> No se encontraron usuarios
                                     </td>
                                 </tr>
@@ -279,6 +276,11 @@
     
     .syncing #sync-icon {
         animation: rotate 1s linear infinite;
+    }
+    
+    .badge-plan {
+        font-size: 0.8em;
+        padding: 0.35em 0.65em;
     }
 </style>
 {% endblock %}

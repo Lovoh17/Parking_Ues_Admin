@@ -1,195 +1,512 @@
 {% extends 'base.html' %}
 {% block content %}
 <style>
-    .espacio-card {
+    :root {
+        --primary-color: #800000;
+        --secondary-color: #6D2323;
+        --accent-color: #03DAC6;
+        --rojo-brillante: #BF3131;
+        --rojo-suave: #E55050;
+        --rojo-granate: #AF3E3E;
+        --beige-dorado: #EAD196;
+        --beige-claro: #E5D0AC;
+        --crema-claro: #FEF9E1;
+        --gris-oscuro: #212121;
+        --gris-plomo: #757575;
+        --gris-plata: #BDBDBD;
+        --gris-claro: #EEEEEE;
+        --light-gray: #F5F5F5;
+        --dorado: #efb810;
+        
+        --border-radius: 8px;
+        --shadow-light: 0 2px 8px rgba(0, 0, 0, 0.08);
+        --shadow-medium: 0 4px 12px rgba(0, 0, 0, 0.12);
+        --transition: all 0.2s ease;
+    }
+
+    body {
+        background-color: #f8f9fa;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    .main-container {
+        background: white;
+        border-radius: var(--border-radius);
+        margin: 15px;
+        padding: 20px;
+        box-shadow: var(--shadow-light);
+    }
+
+    .header-section {
+        background-color: var(--primary-color);
+        border-radius: var(--border-radius);
+        padding: 20px;
+        color: white;
+        margin-bottom: 20px;
+    }
+
+    .page-title {
+        font-size: 1.8rem;
+        font-weight: 700;
+        margin-bottom: 5px;
+    }
+
+    .page-subtitle {
+        font-size: 1rem;
+        opacity: 0.9;
+    }
+
+    .btn-refresh {
+        background-color: white;
+        border: none;
+        border-radius: var(--border-radius);
+        padding: 8px 16px;
+        font-weight: 600;
+        color: var(--primary-color);
+        transition: var(--transition);
+    }
+
+    .btn-refresh:hover {
+        background-color: var(--gris-claro);
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 15px;
+        margin-bottom: 20px;
+    }
+
+    .stat-card {
+        background: white;
+        border-radius: var(--border-radius);
+        padding: 15px;
+        text-align: center;
+        box-shadow: var(--shadow-light);
+        border-left: 4px solid var(--primary-color);
+    }
+
+    .stat-icon {
+        font-size: 1.5rem;
+        margin-bottom: 10px;
+        color: var(--primary-color);
+    }
+
+    .stat-number {
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: var(--primary-color);
+        display: block;
+        margin-bottom: 5px;
+    }
+
+    .stat-label {
+        font-size: 0.9rem;
+        color: var(--gris-plomo);
+        font-weight: 500;
+    }
+
+    .section-card {
+        background: white;
+        border-radius: var(--border-radius);
+        box-shadow: var(--shadow-light);
+        margin-bottom: 20px;
+        overflow: hidden;
+    }
+
+    .section-header {
+        padding: 15px 20px;
+        background-color: var(--primary-color);
+        color: white;
+    }
+
+    .section-header.vip {
+        background-color: var(--rojo-granate);
+    }
+
+    .section-title {
+        font-size: 1.2rem;
+        font-weight: 600;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .spaces-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 15px;
+        padding: 15px;
+    }
+
+    .space-card {
+        background: white;
         border-radius: var(--border-radius);
         box-shadow: var(--shadow-light);
         transition: var(--transition);
-        border: 2px solid var(--gris-plata);
-        height: 100%;
+        border-top: 4px solid transparent;
     }
-    
-    .espacio-card:hover {
-        box-shadow: var(--shadow-medium);
-        transform: translateY(-3px);
+
+    .space-card.available {
+        border-top-color: #28a745;
     }
-    
-    .espacio-card.publico {
-        border-color: var(--primary-color);
+
+    .space-card.occupied {
+        border-top-color: var(--rojo-brillante);
     }
-    
-    .espacio-card.privado {
-        border-color: var(--azul-noche);
+
+    .space-card.reserved {
+        border-top-color: #fd7e14;
     }
-    
-    .espacio-disponible {
-        background-color: var(--crema-claro);
+
+    .space-header {
+        padding: 15px;
+        text-align: center;
+        border-bottom: 1px solid var(--gris-claro);
     }
-    
-    .espacio-ocupado {
-        background-color: var(--gris-claro);
-    }
-    
-    .badge-disponible {
-        background-color: var(--primary-color);
-        color: white;
-    }
-    
-    .badge-ocupado {
-        background-color: var(--gris-plomo);
-        color: white;
-    }
-    
-    .card-header-publico {
-        background-color: var(--primary-color);
-    }
-    
-    .card-header-privado {
-        background-color: var(--azul-noche);
-    }
-    
-    .btn-actualizar {
-        background-color: var(--primary-color);
-        color: white;
-        border: none;
-    }
-    
-    .btn-actualizar:hover {
-        background-color: var(--secondary-color);
-    }
-    
-    .titulo-seccion {
+
+    .space-number {
+        font-size: 1.1rem;
+        font-weight: 600;
         color: var(--primary-color);
-        border-bottom: 2px solid var(--dorado);
-        padding-bottom: 8px;
+        margin-bottom: 8px;
     }
-    
-    .info-ocupacion {
-        background-color: var(--light-gray);
-        border-radius: var(--border-radius);
-        padding: 8px;
-        margin-top: 10px;
+
+    .space-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-weight: 500;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+    }
+
+    .status-available {
+        background: #e6f7ed;
+        color: #28a745;
+    }
+
+    .status-occupied {
+        background: #fee2e2;
+        color: var(--rojo-brillante);
+    }
+
+    .status-reserved {
+        background: #fff4e6;
+        color: #fd7e14;
+    }
+
+    .badge-vip {
+        background-color: var(--dorado);
+        color: var(--gris-oscuro);
+        padding: 3px 8px;
+        border-radius: 12px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        margin-left: 8px;
+    }
+
+    .space-details {
+        padding: 15px;
+        font-size: 0.85rem;
+    }
+
+    .detail-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 0;
+        border-bottom: 1px solid var(--gris-claro);
+    }
+
+    .detail-item:last-child {
+        border-bottom: none;
+    }
+
+    .detail-icon {
+        color: var(--primary-color);
+        font-size: 0.9rem;
+        width: 20px;
+        text-align: center;
+    }
+
+    .detail-label {
+        font-weight: 500;
+        color: var(--gris-plomo);
+        min-width: 70px;
+    }
+
+    .detail-value {
+        color: var(--gris-oscuro);
+        font-weight: 500;
+    }
+
+    .space-footer {
+        padding: 10px 15px;
+        background: var(--light-gray);
+        border-top: 1px solid var(--gris-claro);
+        font-size: 0.75rem;
+        color: var(--gris-plomo);
+        text-align: center;
+    }
+
+    .no-spaces {
+        text-align: center;
+        padding: 30px 15px;
+        color: var(--gris-plomo);
+    }
+
+    .no-spaces-icon {
+        font-size: 2.5rem;
+        margin-bottom: 15px;
+        opacity: 0.5;
+        color: var(--primary-color);
+    }
+
+    @media (max-width: 768px) {
+        .main-container {
+            margin: 10px;
+            padding: 15px;
+        }
+        
+        .page-title {
+            font-size: 1.5rem;
+        }
+        
+        .stats-grid {
+            grid-template-columns: 1fr 1fr;
+        }
+        
+        .spaces-grid {
+            grid-template-columns: 1fr;
+        }
     }
 </style>
-<div class="container-fluid">
-    <!-- Header -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <h1 class="display-6 fw-bold titulo-seccion mb-2">
-                        <i class="fas fa-parking me-3"></i>Gestión de Espacios de Parqueo UES
-                    </h1>
-                    <p class="text-muted mb-0">Estado actual de los espacios disponibles</p>
-                </div>
-                <div>
-                    <button class="btn btn-actualizar" onclick="actualizarEspacios()">
-                        <i class="fas fa-sync-alt me-2"></i>Actualizar
-                    </button>
-                </div>
+
+<div class="main-container">
+    <!-- Header Section -->
+    <div class="header-section">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="page-title">
+                    <i class="fas fa-parking"></i>
+                    Sistema de Parqueo UES
+                </h1>
+                <p class="page-subtitle">
+                    Monitoreo en tiempo real de espacios de estacionamiento
+                </p>
+            </div>
+            <div>
+                <button class="btn btn-refresh" onclick="actualizarEspacios()">
+                    <i class="fas fa-sync-alt me-2"></i>Actualizar
+                </button>
             </div>
         </div>
     </div>
 
     {% if error %}
-    <div class="alert alert-danger">{{ error }}</div>
+    <div class="alert alert-danger">
+        <i class="fas fa-exclamation-triangle me-2"></i>
+        <strong>Error:</strong> {{ error }}
+    </div>
     {% endif %}
 
-    <!-- Espacios Públicos -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header card-header-publico">
-                    <h5 class="mb-0"><i class="fas fa-university me-2"></i>Espacios Públicos</h5>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        {% for espacio in espacios %}
-                        {% if espacio.tipo == 'publico' %}
-                        <div class="col-md-3 mb-4">
-                            <div class="card espacio-card publico {% if espacio.disponible %}espacio-disponible{% else %}espacio-ocupado{% endif %}">
-                                <div class="card-body text-center">
-                                    <h5 class="card-title">Espacio {{ espacio.numero }}</h5>
-                                    <span class="badge {% if espacio.disponible %}badge-disponible{% else %}badge-ocupado{% endif %}">
-                                        {% if espacio.disponible %}DISPONIBLE{% else %}OCUPADO{% endif %}
-                                    </span>
-                                    
-                                    {% if not espacio.disponible %}
-                                    <div class="info-ocupacion mt-3">
-                                        <div class="mb-2">
-                                            <i class="fas fa-car me-2"></i>
-                                            <strong>Placa:</strong> {{ espacio.placa|default:"-" }}
-                                        </div>
-                                        <div>
-                                            <i class="fas fa-clock me-2"></i>
-                                            <strong>Desde:</strong> {{ espacio.hora_ocupacion|default:"-" }}
-                                        </div>
-                                    </div>
-                                    {% endif %}
-                                </div>
-                                <div class="card-footer bg-transparent border-top">
-                                    <small class="text-muted">
-                                        <i class="fas fa-history me-1"></i>
-                                        {{ espacio.ultima_actualizacion|default:"-" }}
-                                    </small>
-                                </div>
-                            </div>
-                        </div>
-                        {% endif %}
-                        {% endfor %}
-                    </div>
-                </div>
+    <!-- Statistics Section -->
+    {% if espacios %}
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-parking"></i>
             </div>
+            <span class="stat-number">{{ total_espacios }}</span>
+            <span class="stat-label">Total Espacios</span>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <span class="stat-number">{{ espacios_disponibles }}</span>
+            <span class="stat-label">Disponibles</span>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-car"></i>
+            </div>
+            <span class="stat-number">{{ espacios_ocupados }}</span>
+            <span class="stat-label">Ocupados</span>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-chart-pie"></i>
+            </div>
+            <span class="stat-number">{{ porcentaje_ocupacion }}%</span>
+            <span class="stat-label">Ocupación</span>
         </div>
     </div>
 
-    <!-- Espacios Privados -->
-    <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header card-header-privado">
-                    <h5 class="mb-0"><i class="fas fa-lock me-2"></i>Espacios Privados</h5>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        {% for espacio in espacios %}
-                        {% if espacio.tipo == 'privado' %}
-                        <div class="col-md-3 mb-4">
-                            <div class="card espacio-card privado {% if espacio.disponible %}espacio-disponible{% else %}espacio-ocupado{% endif %}">
-                                <div class="card-body text-center">
-                                    <h5 class="card-title">Espacio {{ espacio.numero }}</h5>
-                                    <span class="badge {% if espacio.disponible %}badge-disponible{% else %}badge-ocupado{% endif %}">
-                                        {% if espacio.disponible %}DISPONIBLE{% else %}OCUPADO{% endif %}
-                                    </span>
-                                    
-                                    {% if not espacio.disponible %}
-                                    <div class="info-ocupacion mt-3">
-                                        <div class="mb-2">
-                                            <i class="fas fa-car me-2"></i>
-                                            <strong>Placa:</strong> {{ espacio.placa|default:"-" }}
-                                        </div>
-                                        <div>
-                                            <i class="fas fa-clock me-2"></i>
-                                            <strong>Desde:</strong> {{ espacio.hora_ocupacion|default:"-" }}
-                                        </div>
-                                    </div>
-                                    {% endif %}
-                                </div>
-                                <div class="card-footer bg-transparent border-top">
-                                    <small class="text-muted">
-                                        <i class="fas fa-history me-1"></i>
-                                        {{ espacio.ultima_actualizacion|default:"-" }}
-                                    </small>
-                                </div>
-                            </div>
-                        </div>
-                        {% endif %}
-                        {% endfor %}
+    <!-- Regular Spaces Section -->
+    <div class="section-card">
+        <div class="section-header">
+            <h2 class="section-title">
+                <i class="fas fa-car"></i>
+                Espacios Normales
+            </h2>
+        </div>
+        
+        <div class="spaces-grid">
+            {% for espacio in espacios %}
+            {% if espacio.tipo == 'publico' %}
+            <div class="space-card {% if espacio.disponible %}available{% elif espacio.reservado %}reserved{% else %}occupied{% endif %}">
+                <div class="space-header">
+                    <div class="space-number">
+                        Espacio {{ espacio.numero }}
                     </div>
+                    <span class="space-status {% if espacio.disponible %}status-available{% elif espacio.reservado %}status-reserved{% else %}status-occupied{% endif %}">
+                        {% if espacio.disponible %}
+                            <i class="fas fa-check-circle"></i>Disponible
+                        {% elif espacio.reservado %}
+                            <i class="fas fa-bookmark"></i>Reservado
+                        {% else %}
+                            <i class="fas fa-car"></i>Ocupado
+                        {% endif %}
+                    </span>
+                </div>
+                
+                {% if not espacio.disponible or espacio.reservado %}
+                <div class="space-details">
+                    {% if espacio.ocupado_por %}
+                    <div class="detail-item">
+                        <i class="fas fa-user detail-icon"></i>
+                        <span class="detail-label">Usuario:</span>
+                        <span class="detail-value">{{ espacio.ocupado_por }}</span>
+                    </div>
+                    {% endif %}
+                    
+                    {% if espacio.hora_ocupacion and espacio.hora_ocupacion != '-' %}
+                    <div class="detail-item">
+                        <i class="fas fa-clock detail-icon"></i>
+                        <span class="detail-label">Desde:</span>
+                        <span class="detail-value">{{ espacio.hora_ocupacion }}</span>
+                    </div>
+                    {% endif %}
+                    
+                    {% if espacio.tiempo_ocupacion and espacio.tiempo_ocupacion != '-' %}
+                    <div class="detail-item">
+                        <i class="fas fa-hourglass-half detail-icon"></i>
+                        <span class="detail-label">Tiempo:</span>
+                        <span class="detail-value">{{ espacio.tiempo_ocupacion }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+                
+                <div class="space-footer">
+                    <i class="fas fa-history me-1"></i>
+                    Actualizado: {{ espacio.ultima_actualizacion|default:"-" }}
                 </div>
             </div>
+            {% endif %}
+            {% empty %}
+            <div class="no-spaces">
+                <div class="no-spaces-icon">
+                    <i class="fas fa-car-side"></i>
+                </div>
+                <h4>No hay espacios normales</h4>
+            </div>
+            {% endfor %}
         </div>
     </div>
+
+    <!-- VIP Spaces Section -->
+    <div class="section-card">
+        <div class="section-header vip">
+            <h2 class="section-title">
+                <i class="fas fa-crown"></i>
+                Espacios VIP
+            </h2>
+        </div>
+        
+        <div class="spaces-grid">
+            {% for espacio in espacios %}
+            {% if espacio.tipo == 'privado' %}
+            <div class="space-card {% if espacio.disponible %}available{% elif espacio.reservado %}reserved{% else %}occupied{% endif %}">
+                <div class="space-header">
+                    <div class="space-number">
+                        Espacio VIP {{ espacio.numero }}
+                        <span class="badge-vip">
+                            <i class="fas fa-star"></i>VIP
+                        </span>
+                    </div>
+                    <span class="space-status {% if espacio.disponible %}status-available{% elif espacio.reservado %}status-reserved{% else %}status-occupied{% endif %}">
+                        {% if espacio.disponible %}
+                            <i class="fas fa-check-circle"></i>Disponible
+                        {% elif espacio.reservado %}
+                            <i class="fas fa-bookmark"></i>Reservado
+                        {% else %}
+                            <i class="fas fa-car"></i>Ocupado
+                        {% endif %}
+                    </span>
+                </div>
+                
+                {% if not espacio.disponible or espacio.reservado %}
+                <div class="space-details">
+                    {% if espacio.ocupado_por %}
+                    <div class="detail-item">
+                        <i class="fas fa-user-tie detail-icon"></i>
+                        <span class="detail-label">Usuario:</span>
+                        <span class="detail-value">{{ espacio.ocupado_por }}</span>
+                    </div>
+                    {% endif %}
+                    
+                    {% if espacio.hora_ocupacion and espacio.hora_ocupacion != '-' %}
+                    <div class="detail-item">
+                        <i class="fas fa-clock detail-icon"></i>
+                        <span class="detail-label">Desde:</span>
+                        <span class="detail-value">{{ espacio.hora_ocupacion }}</span>
+                    </div>
+                    {% endif %}
+                    
+                    {% if espacio.tiempo_ocupacion and espacio.tiempo_ocupacion != '-' %}
+                    <div class="detail-item">
+                        <i class="fas fa-hourglass-half detail-icon"></i>
+                        <span class="detail-label">Tiempo:</span>
+                        <span class="detail-value">{{ espacio.tiempo_ocupacion }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+                
+                <div class="space-footer">
+                    <i class="fas fa-history me-1"></i>
+                    Actualizado: {{ espacio.ultima_actualizacion|default:"-" }}
+                </div>
+            </div>
+            {% endif %}
+            {% empty %}
+            <div class="no-spaces">
+                <div class="no-spaces-icon">
+                    <i class="fas fa-crown"></i>
+                </div>
+                <h4>No hay espacios VIP</h4>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% else %}
+    <div class="no-spaces">
+        <div class="no-spaces-icon">
+            <i class="fas fa-parking"></i>
+        </div>
+        <h4>No hay espacios de parqueo disponibles</h4>
+        <p>Configura los espacios de parqueo para comenzar a monitorear el sistema.</p>
+    </div>
+    {% endif %}
 </div>
 
 <script>
