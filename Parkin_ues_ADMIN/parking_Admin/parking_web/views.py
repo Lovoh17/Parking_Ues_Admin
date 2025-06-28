@@ -939,124 +939,395 @@ def sync_users(request):
             })
     
     return JsonResponse({'success': False, 'message': 'Método no permitido'})
+ 
+ 
+from django.views import View
+from django.shortcuts import render
+from django.http import HttpResponse, JsonResponse
+from django.template.loader import get_template
+from datetime import datetime
+import xlsxwriter
+from io import BytesIO
+from xhtml2pdf import pisa
+import json
 
-class ReporteVehiculosView(View):
+class ReportesRTDBView(View):
     template_name = 'Reportes.html'
     
     def get(self, request):
-        # Obtener parámetros de filtrado
-        filtros = {
-            'tipo_reporte': request.GET.get('tipo_reporte', 'diario'),
-            'tipo_vehiculo': request.GET.get('tipo_vehiculo', ''),
-            'fecha_inicio': request.GET.get('fecha_inicio', ''),
-            'fecha_fin': request.GET.get('fecha_fin', ''),
-            'formato': request.GET.get('formato', 'html'),
+        # Obtener parámetros del reporte
+        tipo_reporte = request.GET.get('tipo_reporte', 'users')
+        formato = request.GET.get('formato', 'html')
+        
+        # Obtener datos de Firebase RTDB
+        raw_data = self.get_rtdb_data(tipo_reporte)
+        
+        # Procesar y formatear los datos
+        processed_data = self.process_data(raw_data, tipo_reporte)
+        
+        # Manejar diferentes formatos de salida
+        if formato == 'pdf':
+            return self.generar_pdf(processed_data, tipo_reporte)
+        elif formato == 'excel':
+            return self.generar_excel(processed_data, tipo_reporte)
+        elif formato == 'json':
+            return JsonResponse(processed_data, safe=False, json_dumps_params={'indent': 2})
+        
+        # Si es HTML, renderizar la plantilla normal
+        context = {
+            'titulo': self.get_titulo_reporte(tipo_reporte),
+            'tipo_reporte': tipo_reporte,
+            'data': processed_data,
+            'headers': self.get_headers(tipo_reporte),
+            'total_registros': len(processed_data),
+            'fecha_generacion': datetime.now().strftime('%d/%m/%Y %H:%M'),
+            'tipos_reporte': self.get_tipos_reporte(),
+        }
+        return render(request, self.template_name, context)
+    
+    def get_rtdb_data(self, tipo_reporte):
+        """Obtiene datos de Firebase RTDB según el tipo de reporte"""
+        from firebase_admin import db
+        
+        ref = db.reference(tipo_reporte)
+        snapshot = ref.get()
+        
+        # Convertir a lista de diccionarios si es necesario
+        if isinstance(snapshot, dict):
+            return [{'id': key, **value} for key, value in snapshot.items()]
+        return snapshot or []
+    
+    def process_data(self, raw_data, tipo_reporte):
+        """Procesa y formatea los datos según el tipo de reporte"""
+        if not raw_data:
+            return []
+        
+        processed_data = []
+        
+        for item in raw_data:
+            processed_item = {}
+            
+            # Procesar cada campo según el tipo de reporte
+            if tipo_reporte == 'users':
+                processed_item = self.process_user_data(item)
+            elif tipo_reporte == 'user_memberships':
+                processed_item = self.process_membership_data(item)
+            elif tipo_reporte == 'parking_spaces':
+                processed_item = self.process_parking_data(item)
+            elif tipo_reporte == 'membership_plans':
+                processed_item = self.process_plan_data(item)
+            elif tipo_reporte == 'infractions':
+                processed_item = self.process_infraction_data(item)
+            else:
+                processed_item = self.process_generic_data(item)
+            
+            processed_data.append(processed_item)
+        
+        return processed_data
+    
+    def process_user_data(self, item):
+        """Procesa datos de usuarios"""
+        return {
+            'ID': item.get('id', '-'),
+            'Nombre': item.get('name', '-'),
+            'Email': item.get('email', '-'),
+            'Teléfono': item.get('phone', '-'),
+            'Estado': 'Activo' if item.get('active', False) else 'Inactivo',
+            'Fecha Registro': self.format_date(item.get('created_at')),
+            'Último Acceso': self.format_date(item.get('last_login')),
+        }
+    
+    def process_membership_data(self, item):
+        """Procesa datos de membresías"""
+        return {
+            'ID': item.get('id', '-'),
+            'Usuario': item.get('user_name', item.get('user_id', '-')),
+            'Plan': item.get('plan_name', '-'),
+            'Estado': self.format_membership_status(item.get('status')),
+            'Fecha Inicio': self.format_date(item.get('start_date')),
+            'Fecha Fin': self.format_date(item.get('end_date')),
+            'Precio': self.format_currency(item.get('price')),
+        }
+    
+    def process_parking_data(self, item):
+        """Procesa datos de espacios de estacionamiento"""
+        return {
+            'ID': item.get('id', '-'),
+            'Número': item.get('number', '-'),
+            'Zona': item.get('zone', '-'),
+            'Estado': self.format_parking_status(item.get('status')),
+            'Tipo': item.get('type', '-'),
+            'Ocupado por': item.get('occupied_by', '-'),
+            'Última Actualización': self.format_date(item.get('updated_at')),
+        }
+    
+    def process_plan_data(self, item):
+        """Procesa datos de planes de membresía"""
+        return {
+            'ID': item.get('id', '-'),
+            'Nombre': item.get('name', '-'),
+            'Descripción': item.get('description', '-'),
+            'Precio': self.format_currency(item.get('price')),
+            'Duración': f"{item.get('duration', 0)} días",
+            'Activo': 'Sí' if item.get('active', False) else 'No',
+            'Beneficios': self.format_list(item.get('benefits', [])),
+        }
+    
+    def process_infraction_data(self, item):
+        """Procesa datos de infracciones"""
+        return {
+            'ID': item.get('id', '-'),
+            'Usuario': item.get('user_name', item.get('user_id', '-')),
+            'Tipo': item.get('type', '-'),
+            'Descripción': item.get('description', '-'),
+            'Multa': self.format_currency(item.get('fine_amount')),
+            'Estado': self.format_infraction_status(item.get('status')),
+            'Fecha': self.format_date(item.get('created_at')),
+        }
+    
+    def process_generic_data(self, item):
+        """Procesa datos genéricos"""
+        processed = {}
+        for key, value in item.items():
+            # Formatear claves
+            formatted_key = key.replace('_', ' ').title()
+            
+            # Formatear valores
+            if isinstance(value, bool):
+                processed[formatted_key] = 'Sí' if value else 'No'
+            elif isinstance(value, list):
+                processed[formatted_key] = self.format_list(value)
+            elif isinstance(value, dict):
+                processed[formatted_key] = self.format_dict(value)
+            elif key in ['created_at', 'updated_at', 'date', 'start_date', 'end_date']:
+                processed[formatted_key] = self.format_date(value)
+            elif key in ['price', 'amount', 'cost', 'fine_amount']:
+                processed[formatted_key] = self.format_currency(value)
+            else:
+                processed[formatted_key] = str(value) if value is not None else '-'
+        
+        return processed
+    
+    def format_date(self, date_value):
+        """Formatea fechas"""
+        if not date_value:
+            return '-'
+        
+        try:
+            if isinstance(date_value, str):
+                # Intentar diferentes formatos de fecha
+                for fmt in ['%Y-%m-%d', '%Y-%m-%dT%H:%M:%S', '%Y-%m-%d %H:%M:%S']:
+                    try:
+                        dt = datetime.strptime(date_value, fmt)
+                        return dt.strftime('%d/%m/%Y')
+                    except ValueError:
+                        continue
+            return str(date_value)
+        except:
+            return str(date_value) if date_value else '-'
+    
+    def format_currency(self, amount):
+        """Formatea moneda"""
+        if amount is None:
+            return '-'
+        try:
+            return f"${float(amount):,.2f}"
+        except:
+            return str(amount)
+    
+    def format_list(self, list_value):
+        """Formatea listas"""
+        if not list_value:
+            return '-'
+        if isinstance(list_value, list):
+            return ', '.join(str(item) for item in list_value)
+        return str(list_value)
+    
+    def format_dict(self, dict_value):
+        """Formatea diccionarios"""
+        if not dict_value:
+            return '-'
+        if isinstance(dict_value, dict):
+            return ', '.join(f"{k}: {v}" for k, v in dict_value.items())
+        return str(dict_value)
+    
+    def format_membership_status(self, status):
+        """Formatea estado de membresía"""
+        status_map = {
+            'active': 'Activa',
+            'expired': 'Expirada',
+            'suspended': 'Suspendida',
+            'cancelled': 'Cancelada',
+        }
+        return status_map.get(status, status or '-')
+    
+    def format_parking_status(self, status):
+        """Formatea estado de estacionamiento"""
+        status_map = {
+            'available': 'Disponible',
+            'occupied': 'Ocupado',
+            'reserved': 'Reservado',
+            'maintenance': 'Mantenimiento',
+        }
+        return status_map.get(status, status or '-')
+    
+    def format_infraction_status(self, status):
+        """Formatea estado de infracción"""
+        status_map = {
+            'pending': 'Pendiente',
+            'paid': 'Pagada',
+            'cancelled': 'Cancelada',
+            'overdue': 'Vencida',
+        }
+        return status_map.get(status, status or '-')
+    
+    def get_titulo_reporte(self, tipo_reporte):
+        """Obtiene el título del reporte"""
+        titulos = {
+            'users': 'Reporte de Usuarios',
+            'user_memberships': 'Reporte de Membresías',
+            'parking_spaces': 'Reporte de Espacios de Estacionamiento',
+            'membership_plans': 'Reporte de Planes de Membresía',
+            'infractions': 'Reporte de Infracciones',
+        }
+        return titulos.get(tipo_reporte, f"Reporte de {tipo_reporte.replace('_', ' ').title()}")
+    
+    def get_headers(self, tipo_reporte):
+        """Obtiene los encabezados para el tipo de reporte"""
+        headers_map = {
+            'users': ['ID', 'Nombre', 'Email', 'Teléfono', 'Estado', 'Fecha Registro', 'Último Acceso'],
+            'user_memberships': ['ID', 'Usuario', 'Plan', 'Estado', 'Fecha Inicio', 'Fecha Fin', 'Precio'],
+            'parking_spaces': ['ID', 'Número', 'Zona', 'Estado', 'Tipo', 'Ocupado por', 'Última Actualización'],
+            'membership_plans': ['ID', 'Nombre', 'Descripción', 'Precio', 'Duración', 'Activo', 'Beneficios'],
+            'infractions': ['ID', 'Usuario', 'Tipo', 'Descripción', 'Multa', 'Estado', 'Fecha'],
+        }
+        return headers_map.get(tipo_reporte, [])
+    
+    def get_tipos_reporte(self):
+        """Obtiene la lista de tipos de reporte disponibles"""
+        return [
+            {'value': 'users', 'label': 'Usuarios', 'icon': 'fas fa-users'},
+            {'value': 'user_memberships', 'label': 'Membresías de Usuarios', 'icon': 'fas fa-id-card'},
+            {'value': 'parking_spaces', 'label': 'Espacios de Estacionamiento', 'icon': 'fas fa-car'},
+            {'value': 'membership_plans', 'label': 'Planes de Membresía', 'icon': 'fas fa-clipboard-list'},
+            {'value': 'infractions', 'label': 'Infracciones', 'icon': 'fas fa-exclamation-triangle'},
+        ]
+    
+    def generar_pdf(self, data, tipo_reporte):
+        """Genera un reporte en formato PDF mejorado"""
+        from django.template.loader import render_to_string
+        from weasyprint import HTML, CSS
+        from django.conf import settings
+        import os
+        from tempfile import NamedTemporaryFile
+        
+        # Contexto para la plantilla
+        context = {
+            'data': data,
+            'titulo': self.get_titulo_reporte(tipo_reporte),
+            'headers': self.get_headers(tipo_reporte),
+            'total_registros': len(data),
+            'fecha_generacion': datetime.now().strftime('%d/%m/%Y %H:%M'),
+            'logo_path': os.path.join(settings.STATIC_ROOT, 'img/logo.png'),
         }
         
-        # Validar y convertir fechas
-        try:
-            fecha_inicio = datetime.strptime(filtros['fecha_inicio'], '%Y-%m-%d').date() if filtros['fecha_inicio'] else None
-            fecha_fin = datetime.strptime(filtros['fecha_fin'], '%Y-%m-%d').date() if filtros['fecha_fin'] else None
-        except ValueError:
-            fecha_inicio = fecha_fin = None
+        # Renderizar plantilla HTML
+        html_string = render_to_string('reportes_rtdb_pdf.html', context)
         
-        # Determinar rango de fechas según tipo de reporte
-        if filtros['tipo_reporte'] == 'diario':
-            fecha_inicio = datetime.now().date()
-            fecha_fin = fecha_inicio
-        elif filtros['tipo_reporte'] == 'semanal':
-            fecha_fin = datetime.now().date()
-            fecha_inicio = fecha_fin - timedelta(days=6)
-        elif filtros['tipo_reporte'] == 'mensual':
-            fecha_fin = datetime.now().date()
-            fecha_inicio = fecha_fin.replace(day=1)
+        # Crear respuesta HTTP
+        response = HttpResponse(content_type='application/pdf')
+        filename = f"reporte_{tipo_reporte}_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf"
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
         
-        # Actualizar filtros con fechas calculadas
-        filtros.update({
-            'fecha_inicio': fecha_inicio.strftime('%Y-%m-%d') if fecha_inicio else '',
-            'fecha_fin': fecha_fin.strftime('%Y-%m-%d') if fecha_fin else '',
+        # Configuración de WeasyPrint
+        html = HTML(string=html_string, base_url=settings.BASE_DIR)
+        
+        # Estilos CSS adicionales
+        css = CSS(string='''
+            @page {
+                size: A4;
+                margin: 1.5cm;
+                @top-center {
+                    content: "''' + context['titulo'] + '''";
+                    font-size: 10pt;
+                }
+                @bottom-center {
+                    content: "Página " counter(page) " de " counter(pages);
+                    font-size: 8pt;
+                }
+            }
+        ''')
+        
+        # Generar PDF
+        html.write_pdf(response, stylesheets=[css])
+    
+        return response
+    
+    def generar_excel(self, data, tipo_reporte):
+        """Genera un reporte en formato Excel"""
+        output = BytesIO()
+        workbook = xlsxwriter.Workbook(output)
+        worksheet = workbook.add_worksheet()
+        
+        # Formatos
+        title_format = workbook.add_format({
+            'bold': True,
+            'font_size': 16,
+            'align': 'center',
+            'valign': 'vcenter',
+            'bg_color': '#2C5282',
+            'font_color': 'white',
+            'border': 1
         })
         
+        header_format = workbook.add_format({
+            'bold': True,
+            'align': 'center',
+            'valign': 'vcenter',
+            'bg_color': '#3182CE',
+            'font_color': 'white',
+            'border': 1
+        })
         
-        return render(request, self.template_name)
-    
-    def generar_pdf(self, registros, filtros, total_recaudado):
-        template = get_template('Reportes.html')
-        context = {
-            'registros': registros,
-            'filtros': filtros,
-            'total_recaudado': total_recaudado,
-            'fecha_generacion': datetime.now().strftime('%d/%m/%Y %H:%M')
-        }
-        html = template.render(context)
+        cell_format = workbook.add_format({
+            'border': 1,
+            'valign': 'vcenter'
+        })
         
-        response = HttpResponse(content_type='application/pdf')
-        response['Content-Disposition'] = f'attachment; filename="reporte_vehiculos_{datetime.now().date()}.pdf"'
+        # Título del reporte
+        titulo = self.get_titulo_reporte(tipo_reporte)
+        worksheet.merge_range('A1:H1', titulo, title_format)
         
-        pisa_status = pisa.CreatePDF(html, dest=response)
-        if pisa_status.err:
-            return HttpResponse('Error al generar PDF', status=500)
+        # Información adicional
+        info_format = workbook.add_format({'italic': True, 'font_size': 10})
+        worksheet.write(1, 0, f"Generado el: {datetime.now().strftime('%d/%m/%Y %H:%M')}", info_format)
+        worksheet.write(2, 0, f"Total de registros: {len(data)}", info_format)
         
-        return response
-    
-    def generar_excel(self, registros, filtros):
-        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-        response['Content-Disposition'] = f'attachment; filename="reporte_vehiculos_{datetime.now().date()}.xlsx"'
-        
-        wb = Workbook()
-        ws = wb.active
-        ws.title = "Registros de Vehículos"
-        
-        # Encabezados
-        headers = [
-            'ID', 'Placa', 'Tipo Vehículo', 'Espacio',
-            'Hora Entrada', 'Hora Salida', 'Tiempo Estacionado', 'Tarifa', 'Estado'
-        ]
-        ws.append(headers)
-        
-        # Datos
-        for r in registros:
-            estado = 'Activo' if not r.hora_salida else 'Finalizado'
-            tiempo = r.tiempo_transcurrido if not r.hora_salida else r.tiempo_estacionado
+        if data:
+            headers = self.get_headers(tipo_reporte) or list(data[0].keys())
             
-            ws.append([
-                r.id,
-                r.placa,
-                r.tipo_vehiculo,
-                r.espacio.numero,
-                r.hora_entrada.strftime('%d/%m/%Y %H:%M'),
-                r.hora_salida.strftime('%d/%m/%Y %H:%M') if r.hora_salida else 'N/A',
-                tiempo,
-                f"${r.tarifa:.2f}" if r.tarifa else 'N/A',
-                estado
-            ])
+            # Escribir encabezados
+            for col_num, header in enumerate(headers):
+                worksheet.write(4, col_num, header, header_format)
+                worksheet.set_column(col_num, col_num, 15)  # Ajustar ancho de columna
+            
+            # Escribir datos
+            for row_num, item in enumerate(data, start=5):
+                for col_num, header in enumerate(headers):
+                    value = item.get(header, '-')
+                    worksheet.write(row_num, col_num, value, cell_format)
         
-        wb.save(response)
+        workbook.close()
+        output.seek(0)
+        
+        response = HttpResponse(
+            output,
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        filename = f"reporte_{tipo_reporte}_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx"
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        
         return response
-    
-    def generar_json(self, registros, filtros):
-        data = {
-            'meta': {
-                'fecha_generacion': datetime.now().isoformat(),
-                'tipo_reporte': filtros['tipo_reporte'],
-                'filtros_aplicados': filtros,
-                'total_registros': registros.count()
-            },
-            'data': [
-                {
-                    'id': r.id,
-                    'placa': r.placa,
-                    'tipo_vehiculo': r.tipo_vehiculo,
-                    'espacio': r.espacio.numero,
-                    'hora_entrada': r.hora_entrada.isoformat(),
-                    'hora_salida': r.hora_salida.isoformat() if r.hora_salida else None,
-                    'tarifa': float(r.tarifa) if r.tarifa else None,
-                    'estado': 'activo' if not r.hora_salida else 'finalizado'
-                }
-                for r in registros
-            ]
-        }
-        return JsonResponse(data, safe=False)    
 
 class GestionUsuarioView(View):
     template_name = 'formulario_usuario.html'
