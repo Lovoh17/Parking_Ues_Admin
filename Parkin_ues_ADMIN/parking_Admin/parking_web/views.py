@@ -1195,7 +1195,7 @@ class ReportesRTDBView(View):
     def get_headers(self, tipo_reporte):
         """Obtiene los encabezados para el tipo de reporte"""
         headers_map = {
-            'users': ['ID', 'Nombre', 'Email', 'Teléfono', 'Estado', 'Fecha Registro', 'Último Acceso'],
+            'users': ['ID', 'Nombre', 'Email', 'Teléfono', 'Estado'],
             'user_memberships': ['ID', 'Usuario', 'Plan', 'Estado', 'Fecha Inicio', 'Fecha Fin', 'Precio'],
             'parking_spaces': ['ID', 'Número', 'Zona', 'Estado', 'Tipo', 'Ocupado por', 'Última Actualización'],
             'membership_plans': ['ID', 'Nombre', 'Descripción', 'Precio', 'Duración', 'Activo', 'Beneficios'],
@@ -1212,6 +1212,8 @@ class ReportesRTDBView(View):
             {'value': 'membership_plans', 'label': 'Planes de Membresía', 'icon': 'fas fa-clipboard-list'},
             {'value': 'infractions', 'label': 'Infracciones', 'icon': 'fas fa-exclamation-triangle'},
         ]
+        
+    
     
     def generar_pdf(self, data, tipo_reporte):
         """Genera un reporte en formato PDF mejorado"""
@@ -1221,6 +1223,7 @@ class ReportesRTDBView(View):
         import os
         from tempfile import NamedTemporaryFile
         
+        
         # Contexto para la plantilla
         context = {
             'data': data,
@@ -1228,11 +1231,10 @@ class ReportesRTDBView(View):
             'headers': self.get_headers(tipo_reporte),
             'total_registros': len(data),
             'fecha_generacion': datetime.now().strftime('%d/%m/%Y %H:%M'),
-            'logo_path': os.path.join(settings.STATIC_ROOT, 'img/logo.png'),
         }
         
         # Renderizar plantilla HTML
-        html_string = render_to_string('reportes_rtdb_pdf.html', context)
+        html_string = render_to_string('Reportes_pdf.html', context)
         
         # Crear respuesta HTTP
         response = HttpResponse(content_type='application/pdf')

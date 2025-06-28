@@ -1,67 +1,87 @@
 {% extends 'base.html' %}
-{% load report_filters %}
+{% load dict_extras %}
 
 {% block content %}
 <div class="container-fluid">
-    <!-- Header Section -->
+    <!-- Header Section Mejorado -->
     <div class="row mb-4">
         <div class="col-12">
-            <div class="bg-gradient-to-r from-blue-600 to-blue-800 rounded-lg p-6 text-white shadow-lg">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h1 class="display-6 fw-bold mb-2">
-                            <i class="fas fa-file-alt me-3"></i>{{ titulo }}
-                        </h1>
-                        <div class="d-flex align-items-center gap-4">
-                            <p class="mb-0 opacity-90">
-                                <i class="fas fa-calendar-alt me-2"></i>Generado el {{ fecha_generacion }}
-                            </p>
-                            <p class="mb-0 opacity-90">
-                                <i class="fas fa-database me-2"></i>{{ total_registros }} registro{{ total_registros|pluralize }}
-                            </p>
+            <div class="header-card position-relative overflow-hidden">
+                <div class="header-gradient"></div>
+                <div class="header-pattern"></div>
+                <div class="header-content position-relative">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap">
+                        <div class="header-info">
+                            <div class="d-flex align-items-center mb-3">
+                                <div class="icon-container me-3">
+                                    <i class="fas fa-file-alt"></i>
+                                </div>
+                                <h1 class="display-6 fw-bold mb-0 text-white">{{ titulo }}</h1>
+                            </div>
+                            <div class="d-flex align-items-center gap-4 flex-wrap">
+                                <div class="info-badge">
+                                    <i class="fas fa-calendar-alt me-2"></i>
+                                    <span>Generado el {{ fecha_generacion }}</span>
+                                </div>
+                                <div class="info-badge">
+                                    <i class="fas fa-database me-2"></i>
+                                    <span>{{ total_registros }} registro{{ total_registros|pluralize }}</span>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                    <div class="dropdown">
-                        <button class="btn btn-light btn-lg dropdown-toggle shadow" type="button" data-bs-toggle="dropdown">
-                            <i class="fas fa-download me-2"></i>Exportar
-                        </button>
-                        <ul class="dropdown-menu dropdown-menu-end shadow">
-                            <li>
-                                <a class="dropdown-item" href="?tipo_reporte={{ tipo_reporte }}&formato=pdf">
-                                    <i class="fas fa-file-pdf text-danger me-2"></i>PDF
-                                </a>
-                            </li>
-                            <li>
-                                <a class="dropdown-item" href="?tipo_reporte={{ tipo_reporte }}&formato=excel">
-                                    <i class="fas fa-file-excel text-success me-2"></i>Excel
-                                </a>
-                            </li>
-                            <li>
-                                <a class="dropdown-item" href="?tipo_reporte={{ tipo_reporte }}&formato=json">
-                                    <i class="fas fa-code text-info me-2"></i>JSON
-                                </a>
-                            </li>
-                        </ul>
+                        <div class="header-actions">
+                            <div class="dropdown">
+                                <button class="btn btn-exportar dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                    <i class="fas fa-download me-2"></i>Exportar
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0">
+                                    <li>
+                                        <a class="dropdown-item" href="?tipo_reporte={{ tipo_reporte }}&formato=pdf">
+                                            <i class="fas fa-file-pdf text-danger me-2"></i>Exportar PDF
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="?tipo_reporte={{ tipo_reporte }}&formato=excel">
+                                            <i class="fas fa-file-excel text-success me-2"></i>Exportar Excel
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="?tipo_reporte={{ tipo_reporte }}&formato=json">
+                                            <i class="fas fa-code me-2" style="color: var(--accent-color);"></i>Exportar JSON
+                                        </a>
+                                    </li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li>
+                                        <a class="dropdown-item" href="javascript:window.print()">
+                                            <i class="fas fa-print me-2" style="color: var(--gris-plomo);"></i>Imprimir
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Selector de tipo de reporte -->
+    <!-- Selector de tipo de reporte mejorado -->
     <div class="row mb-4">
         <div class="col-12">
-            <div class="card shadow-sm border-0">
-                <div class="card-header bg-light border-bottom-0">
-                    <h5 class="mb-0 text-dark">
-                        <i class="fas fa-filter me-2 text-primary"></i>Seleccionar Tipo de Reporte
-                    </h5>
+            <div class="card-elegant shadow-sm border-0">
+                <div class="card-header-elegant">
+                    <div class="d-flex align-items-center">
+                        <div class="header-icon me-3">
+                            <i class="fas fa-filter"></i>
+                        </div>
+                        <h5 class="mb-0 fw-semibold">Configuración del Reporte</h5>
+                    </div>
                 </div>
                 <div class="card-body bg-white">
-                    <form method="get" class="row g-3">
+                    <form method="get" class="row g-3 align-items-end">
                         <div class="col-md-8">
-                            <label for="tipo_reporte" class="form-label fw-semibold">Tipo de Reporte</label>
-                            <select class="form-select form-select-lg border-2" id="tipo_reporte" name="tipo_reporte" onchange="this.form.submit()">
+                            <label for="tipo_reporte" class="form-label fw-semibold text-dark">Tipo de Reporte</label>
+                            <select class="form-select-elegant" id="tipo_reporte" name="tipo_reporte" onchange="this.form.submit()">
                                 {% for tipo in tipos_reporte %}
                                     <option value="{{ tipo.value }}" {% if tipo_reporte == tipo.value %}selected{% endif %}>
                                         {{ tipo.label }}
@@ -69,9 +89,9 @@
                                 {% endfor %}
                             </select>
                         </div>
-                        <div class="col-md-4 d-flex align-items-end">
-                            <button type="submit" class="btn btn-primary btn-lg w-100">
-                                <i class="fas fa-sync-alt me-2"></i>Actualizar
+                        <div class="col-md-4">
+                            <button type="submit" class="btn btn-actualizar w-100">
+                                <i class="fas fa-sync-alt me-2"></i>Actualizar Reporte
                             </button>
                         </div>
                     </form>
@@ -80,102 +100,106 @@
         </div>
     </div>
 
-    <!-- Estadísticas rápidas -->
+    <!-- Estadísticas mejoradas -->
     {% if data %}
     <div class="row mb-4">
-        <div class="col-md-3">
-            <div class="card bg-primary text-white border-0 shadow-sm">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <div class="flex-grow-1">
-                            <h6 class="card-title mb-1 opacity-90">Total de Registros</h6>
-                            <h2 class="mb-0">{{ total_registros }}</h2>
-                        </div>
-                        <div class="text-primary-light">
-                            <i class="fas fa-database fa-2x opacity-75"></i>
-                        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="stat-card stat-primary">
+                <div class="stat-content">
+                    <div class="stat-info">
+                        <h6 class="stat-label">Total de Registros</h6>
+                        <h2 class="stat-value">{{ total_registros }}</h2>
+                    </div>
+                    <div class="stat-icon">
+                        <i class="fas fa-database"></i>
                     </div>
                 </div>
+                <div class="stat-decoration"></div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card bg-success text-white border-0 shadow-sm">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <div class="flex-grow-1">
-                            <h6 class="card-title mb-1 opacity-90">Campos</h6>
-                            <h2 class="mb-0">{{ headers|length }}</h2>
-                        </div>
-                        <div class="text-success-light">
-                            <i class="fas fa-columns fa-2x opacity-75"></i>
-                        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="stat-card stat-accent">
+                <div class="stat-content">
+                    <div class="stat-info">
+                        <h6 class="stat-label">Campos Disponibles</h6>
+                        <h2 class="stat-value">{{ headers|length }}</h2>
+                    </div>
+                    <div class="stat-icon">
+                        <i class="fas fa-columns"></i>
                     </div>
                 </div>
+                <div class="stat-decoration"></div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card bg-info text-white border-0 shadow-sm">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <div class="flex-grow-1">
-                            <h6 class="card-title mb-1 opacity-90">Fuente</h6>
-                            <h2 class="mb-0 fs-6">Firebase RTDB</h2>
-                        </div>
-                        <div class="text-info-light">
-                            <i class="fas fa-cloud fa-2x opacity-75"></i>
-                        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="stat-card stat-secondary">
+                <div class="stat-content">
+                    <div class="stat-info">
+                        <h6 class="stat-label">Fuente de Datos</h6>
+                        <h2 class="stat-value fs-6">Firebase RTDB</h2>
+                    </div>
+                    <div class="stat-icon">
+                        <i class="fas fa-cloud"></i>
                     </div>
                 </div>
+                <div class="stat-decoration"></div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card bg-warning text-white border-0 shadow-sm">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <div class="flex-grow-1">
-                            <h6 class="card-title mb-1 opacity-90">Formato</h6>
-                            <h2 class="mb-0 fs-6">Tabla Interactiva</h2>
-                        </div>
-                        <div class="text-warning-light">
-                            <i class="fas fa-table fa-2x opacity-75"></i>
-                        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="stat-card stat-gold">
+                <div class="stat-content">
+                    <div class="stat-info">
+                        <h6 class="stat-label">Formato</h6>
+                        <h2 class="stat-value fs-6">Tabla Interactiva</h2>
+                    </div>
+                    <div class="stat-icon">
+                        <i class="fas fa-table"></i>
                     </div>
                 </div>
+                <div class="stat-decoration"></div>
             </div>
         </div>
     </div>
     {% endif %}
 
-    <!-- Tabla de resultados -->
+    <!-- Tabla de resultados mejorada -->
     <div class="row">
         <div class="col-12">
-            <div class="card shadow-sm border-0">
-                <div class="card-header bg-light border-bottom-0 d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0 text-dark">
-                        <i class="fas fa-table me-2 text-primary"></i>Datos del Reporte
-                    </h5>
-                    {% if data %}
-                    <div class="d-flex gap-2">
-                        <button class="btn btn-sm btn-outline-primary" onclick="toggleColumnas()">
-                            <i class="fas fa-columns me-1"></i>Columnas
-                        </button>
-                        <button class="btn btn-sm btn-outline-secondary" onclick="exportarCSV()">
-                            <i class="fas fa-file-csv me-1"></i>CSV
-                        </button>
+            <div class="card-elegant shadow-sm border-0">
+                <div class="card-header-table">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap">
+                        <div class="d-flex align-items-center">
+                            <div class="header-icon me-3">
+                                <i class="fas fa-table"></i>
+                            </div>
+                            <h5 class="mb-0 fw-semibold">Datos del Reporte</h5>
+                        </div>
+                        {% if data %}
+                        <div class="table-actions d-flex gap-2 flex-wrap">
+                            <button class="btn btn-table-action" onclick="toggleColumnas()">
+                                <i class="fas fa-columns me-1"></i>Columnas
+                            </button>
+                            <button class="btn btn-table-action" onclick="exportarCSV()">
+                                <i class="fas fa-file-csv me-1"></i>CSV
+                            </button>
+                            <button class="btn btn-table-action" onclick="toggleModoOscuro()">
+                                <i class="fas fa-moon me-1"></i>Tema
+                            </button>
+                        </div>
+                        {% endif %}
                     </div>
-                    {% endif %}
                 </div>
                 <div class="card-body p-0">
                     {% if data %}
-                    <div class="table-responsive">
-                        <table class="table table-hover mb-0" id="reportTable">
-                            <thead class="table-dark">
+                    <div class="table-container">
+                        <table class="table-elegant mb-0" id="reportTable">
+                            <thead>
                                 <tr>
                                     {% for header in headers %}
-                                        <th class="text-center fw-semibold border-end">
-                                            <div class="d-flex align-items-center justify-content-center">
-                                                {{ header }}
-                                                <i class="fas fa-sort ms-2 text-muted" style="font-size: 0.8em;"></i>
+                                        <th class="table-header">
+                                            <div class="header-content-table">
+                                                <span>{{ header }}</span>
+                                                <i class="fas fa-sort sort-icon"></i>
                                             </div>
                                         </th>
                                     {% endfor %}
@@ -183,27 +207,26 @@
                             </thead>
                             <tbody>
                                 {% for item in data %}
-                                <tr class="table-row-hover">
+                                <tr class="table-row">
                                     {% for header in headers %}
-                                    
-                                        <td class="text-center align-middle border-end">
+                                        <td class="table-cell">
                                             {% with value=item|lookup:header %}
                                                 {% if value == '-' %}
-                                                    <span class="text-muted">-</span>
+                                                    <span class="value-empty">Sin datos</span>
                                                 {% elif 'Activo' in value or 'Disponible' in value or 'Sí' in value or 'Pagada' in value %}
-                                                    <span class="badge bg-success">{{ value }}</span>
+                                                    <span class="badge badge-success">{{ value }}</span>
                                                 {% elif 'Inactivo' in value or 'No' in value or 'Expirada' in value or 'Cancelada' in value %}
-                                                    <span class="badge bg-danger">{{ value }}</span>
+                                                    <span class="badge badge-danger">{{ value }}</span>
                                                 {% elif 'Pendiente' in value or 'Reservado' in value or 'Suspendida' in value %}
-                                                    <span class="badge bg-warning text-dark">{{ value }}</span>
+                                                    <span class="badge badge-warning">{{ value }}</span>
                                                 {% elif 'Ocupado' in value or 'Mantenimiento' in value or 'Vencida' in value %}
-                                                    <span class="badge bg-secondary">{{ value }}</span>
+                                                    <span class="badge badge-secondary">{{ value }}</span>
                                                 {% elif '$' in value %}
-                                                    <span class="fw-semibold text-success">{{ value }}</span>
+                                                    <span class="value-money">{{ value }}</span>
                                                 {% elif '/' in value and value|length == 10 %}
-                                                    <span class="text-primary">{{ value }}</span>
+                                                    <span class="value-date">{{ value }}</span>
                                                 {% else %}
-                                                    {{ value }}
+                                                    <span class="value-default">{{ value }}</span>
                                                 {% endif %}
                                             {% endwith %}
                                         </td>
@@ -214,13 +237,13 @@
                         </table>
                     </div>
                     {% else %}
-                    <div class="text-center py-5">
-                        <div class="text-muted mb-3">
-                            <i class="fas fa-inbox fa-3x"></i>
+                    <div class="empty-state">
+                        <div class="empty-icon">
+                            <i class="fas fa-inbox"></i>
                         </div>
-                        <h5 class="text-muted">No se encontraron registros</h5>
-                        <p class="text-muted">No hay datos disponibles para el tipo de reporte seleccionado.</p>
-                        <a href="?" class="btn btn-primary">
+                        <h5 class="empty-title">No se encontraron registros</h5>
+                        <p class="empty-description">No hay datos disponibles para el tipo de reporte seleccionado.</p>
+                        <a href="?" class="btn btn-empty-action">
                             <i class="fas fa-refresh me-2"></i>Intentar de nuevo
                         </a>
                     </div>
@@ -231,399 +254,476 @@
     </div>
 </div>
 
-<!-- Estilos adicionales -->
 <style>
-.bg-gradient-to-r {
-    background: linear-gradient(90deg, #2563eb 0%, #1e40af 100%);
+/* Header mejorado */
+.header-card {
+    border-radius: 16px;
+    min-height: 180px;
+    box-shadow: 0 10px 40px rgba(128, 0, 0, 0.15);
+    position: relative;
+    overflow: hidden;
 }
 
-.table-row-hover:hover {
-    background-color: #f8fafc !important;
-    transition: background-color 0.2s ease;
+.header-gradient {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 50%, var(--rojo-granate) 100%);
+    border-radius: 16px;
 }
 
-.card {
+.header-pattern {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: 
+        radial-gradient(circle at 20% 50%, rgba(234, 209, 150, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(3, 218, 198, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 40% 80%, rgba(239, 184, 16, 0.1) 0%, transparent 50%);
+    border-radius: 16px;
+}
+
+.header-content {
+    padding: 30px;
+    z-index: 10;
+    position: relative;
+}
+
+.icon-container {
+    width: 60px;
+    height: 60px;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.icon-container i {
+    font-size: 24px;
+    color: white;
+}
+
+.info-badge {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 8px 16px;
+    border-radius: 20px;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    font-size: 0.9em;
+    display: flex;
+    align-items: center;
+}
+
+.btn-exportar {
+    background: linear-gradient(135deg, var(--beige-dorado) 0%, var(--dorado) 100%);
+    color: var(--azul-noche);
+    border: none;
+    padding: 12px 24px;
     border-radius: 12px;
+    font-weight: 600;
+    box-shadow: 0 4px 15px rgba(239, 184, 16, 0.3);
+    transition: all 0.3s ease;
 }
 
-.btn {
+.btn-exportar:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(239, 184, 16, 0.4);
+    color: var(--azul-noche);
+}
+
+/* Cards elegantes */
+.card-elegant {
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid var(--gris-claro);
+    background: white;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+}
+
+.card-elegant:hover {
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    transform: translateY(-3px);
+}
+
+.card-header-elegant {
+    background: linear-gradient(135deg, var(--light-gray) 0%, var(--gris-claro) 100%);
+    padding: 20px 25px;
+    border-bottom: 2px solid var(--primary-color);
+}
+
+.card-header-table {
+    background: linear-gradient(135deg, var(--crema-claro) 0%, var(--beige-claro) 100%);
+    padding: 20px 25px;
+    border-bottom: 2px solid var(--primary-color);
+}
+
+.header-icon {
+    width: 40px;
+    height: 40px;
+    background: var(--primary-color);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+}
+
+.form-select-elegant {
+    border: 2px solid var(--gris-claro);
+    border-radius: 12px;
+    padding: 12px 16px;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    background: white;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.form-select-elegant:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(128, 0, 0, 0.1);
+}
+
+.btn-actualizar {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 12px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(128, 0, 0, 0.2);
+}
+
+.btn-actualizar:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(128, 0, 0, 0.3);
+    color: white;
+}
+
+/* Estadísticas mejoradas */
+.stat-card {
+    position: relative;
+    border-radius: 16px;
+    padding: 25px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+}
+
+.stat-primary {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    color: white;
+}
+
+.stat-accent {
+    background: linear-gradient(135deg, #823434 0%, #dc3535 100%);
+    color: white;
+}
+
+.stat-secondary {
+    background: linear-gradient(135deg, var(--rojo-brillante) 0%, var(--rojo-suave) 100%);
+    color: white;
+}
+
+.stat-gold {
+    background: linear-gradient(135deg, var(--beige-dorado) 0%, var(--dorado) 100%);
+    color: var(--azul-noche);
+}
+
+.stat-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: relative;
+    z-index: 2;
+}
+
+.stat-label {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+    opacity: 0.9;
+}
+
+.stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+    margin: 0;
+    line-height: 1;
+}
+
+.stat-icon {
+    width: 60px;
+    height: 60px;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(10px);
+}
+
+.stat-icon i {
+    font-size: 24px;
+}
+
+.stat-decoration {
+    position: absolute;
+    top: -20px;
+    right: -20px;
+    width: 80px;
+    height: 80px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 50%;
+    z-index: 1;
+}
+
+/* Tabla elegante */
+.table-container {
+    overflow-x: auto;
+    border-radius: 0 0 16px 16px;
+}
+
+.table-elegant {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0;
+    font-size: 0.9rem;
+}
+
+.table-header {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    color: white;
+    padding: 16px 20px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    transition: background 0.3s ease;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.header-content-table {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.sort-icon {
+    opacity: 0.6;
+    font-size: 0.8em;
+    transition: all 0.3s ease;
+}
+
+.table-header:hover .sort-icon {
+    opacity: 1;
+    color: var(--dorado);
+}
+
+.table-row {
+    transition: all 0.3s ease;
+    border-bottom: 1px solid var(--gris-claro);
+}
+
+.table-row:hover {
+    background: linear-gradient(135deg, var(--crema-claro) 0%, var(--beige-claro) 30%);
+    transform: scale(1.01);
+    box-shadow: 0 2px 10px rgba(128, 0, 0, 0.1);
+}
+
+.table-cell {
+    padding: 16px 20px;
+    vertical-align: middle;
+    border-bottom: 1px solid var(--gris-claro);
+}
+
+/* Valores de tabla */
+.value-empty {
+    color: var(--gris-plomo);
+    font-style: italic;
+    font-size: 0.85em;
+}
+
+.value-money {
+    color: var(--accent-color);
+    font-weight: 700;
+    font-family: 'Monaco', 'Courier New', monospace;
+}
+
+.value-date {
+    color: var(--primary-color);
+    font-weight: 500;
+    font-family: 'Monaco', 'Courier New', monospace;
+}
+
+.value-default {
+    color: var(--gris-oscuro);
+}
+
+/* Badges mejorados */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border: 1px solid transparent;
+    position: relative;
+    overflow: hidden;
+}
+
+.badge::before {
+    content: '';
+    position: absolute;
+    left: 8px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+}
+
+.badge-success {
+    background: linear-gradient(135deg, var(--accent-color) 0%, #00b4a6 100%);
+    color: white;
+    padding-left: 20px;
+}
+
+.badge-success::before {
+    background: rgba(255, 255, 255, 0.8);
+}
+
+.badge-danger {
+    background: linear-gradient(135deg, var(--rojo-brillante) 0%, var(--rojo-suave) 100%);
+    color: white;
+    padding-left: 20px;
+}
+
+.badge-danger::before {
+    background: rgba(255, 255, 255, 0.8);
+}
+
+.badge-warning {
+    background: linear-gradient(135deg, var(--beige-dorado) 0%, var(--dorado) 100%);
+    color: var(--azul-noche);
+    padding-left: 20px;
+}
+
+.badge-warning::before {
+    background: var(--azul-noche);
+}
+
+.badge-secondary {
+    background: linear-gradient(135deg, var(--gris-plomo) 0%, var(--gris-plata) 100%);
+    color: white;
+    padding-left: 20px;
+}
+
+.badge-secondary::before {
+    background: rgba(255, 255, 255, 0.8);
+}
+
+/* Botones de tabla */
+.btn-table-action {
+    background: var(--light-gray);
+    color: var(--gris-oscuro);
+    border: 1px solid var(--gris-claro);
+    padding: 8px 16px;
     border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.btn-table-action:hover {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+    transform: translateY(-1px);
+}
+
+/* Estado vacío */
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--gris-plomo);
+}
+
+.empty-icon {
+    font-size: 4rem;
+    color: var(--gris-plata);
+    margin-bottom: 20px;
+}
+
+.empty-title {
+    color: var(--gris-oscuro);
+    margin-bottom: 15px;
+    font-weight: 600;
+}
+
+.empty-description {
+    color: var(--gris-plomo);
+    margin-bottom: 25px;
+}
+
+.btn-empty-action {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 12px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-empty-action:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(128, 0, 0, 0.3);
+    color: white;
+}
+
+/* Dropdown mejorado */
+.dropdown-menu {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+    padding: 8px;
+    backdrop-filter: blur(10px);
+    background: rgba(255, 255, 255, 0.95);
+}
+
+.dropdown-item {
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 2px;
+    transition: all 0.3s ease;
     font-weight: 500;
 }
 
-.form-select {
-    border-radius: 8px;
-}
-
-.shadow-sm {
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
-}
-
-.shadow-lg {
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15) !important;
-}
-
-.table th {
-    background-color: #1e293b !important;
-    color: white !important;
-    font-weight: 600;
-    font-size: 0.9em;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.badge {
-    font-size: 0.75em;
-    font-weight: 600;
-    padding: 0.5em 0.75em;
-    border-radius: 6px;
-}
-
-.text-primary-light {
-    color: rgba(255, 255, 255, 0.7) !important;
-}
-
-.text-success-light {
-    color: rgba(255, 255, 255, 0.7) !important;
-}
-
-.text-info-light {
-    color: rgba(255, 255, 255, 0.7) !important;
-}
-
-.text-warning-light {
-    color: rgba(255, 255, 255, 0.7) !important;
-}
-
-@media (max-width: 768px) {
-    .display-6 {
-        font-size: 1.5rem;
-    }
-    
-    .card-body {
-        padding: 1rem;
-    }
-    
-    .table-responsive {
-        font-size: 0.85em;
-    }
-}
-</style>
-
-<!-- Scripts adicionales -->
-<script>
-function toggleColumnas() {
-    // Crear modal para seleccionar columnas visibles
-    const headers = {{ headers|safe }};
-    let modalHtml = `
-        <div class="modal fade" id="columnModal" tabindex="-1">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title">Seleccionar Columnas</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="row">
-    `;
-    
-    headers.forEach((header, index) => {
-        modalHtml += `
-            <div class="col-md-6 mb-2">
-                <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="col${index}" checked>
-                    <label class="form-check-label" for="col${index}">${header}</label>
-                </div>
-            </div>
-        `;
-    });
-    
-    modalHtml += `
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                        <button type="button" class="btn btn-primary" onclick="aplicarColumnas()">Aplicar</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
-    
-    // Insertar modal si no existe
-    if (!document.getElementById('columnModal')) {
-        document.body.insertAdjacentHTML('beforeend', modalHtml);
-    }
-    
-    // Mostrar modal
-    new bootstrap.Modal(document.getElementById('columnModal')).show();
-}
-
-function aplicarColumnas() {
-    const table = document.getElementById('reportTable');
-    const headers = {{ headers|safe }};
-    
-    headers.forEach((header, index) => {
-        const checkbox = document.getElementById(`col${index}`);
-        const headerCell = table.querySelector(`thead th:nth-child(${index + 1})`);
-        const cells = table.querySelectorAll(`tbody td:nth-child(${index + 1})`);
-        
-        if (checkbox.checked) {
-            headerCell.style.display = '';
-            cells.forEach(cell => cell.style.display = '');
-        } else {
-            headerCell.style.display = 'none';
-            cells.forEach(cell => cell.style.display = 'none');
-        }
-    });
-    
-    // Cerrar modal
-    bootstrap.Modal.getInstance(document.getElementById('columnModal')).hide();
-}
-
-function exportarCSV() {
-    const table = document.getElementById('reportTable');
-    if (!table) return;
-    
-    let csv = [];
-    const rows = table.querySelectorAll('tr');
-    
-    for (let i = 0; i < rows.length; i++) {
-        const row = [];
-        const cols = rows[i].querySelectorAll('td, th');
-        
-        for (let j = 0; j < cols.length; j++) {
-            // Solo incluir columnas visibles
-            if (cols[j].style.display !== 'none') {
-                let cellText = cols[j].innerText.replace(/"/g, '""');
-                row.push('"' + cellText + '"');
-            }
-        }
-        csv.push(row.join(','));
-    }
-    
-    const csvContent = csv.join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    
-    link.setAttribute('href', url);
-    link.setAttribute('download', `reporte_{{ tipo_reporte }}_${new Date().toISOString().slice(0, 10)}.csv`);
-    link.style.visibility = 'hidden';
-    
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-}
-
-// Funcionalidad de ordenamiento
-document.addEventListener('DOMContentLoaded', function() {
-    const table = document.getElementById('reportTable');
-    if (!table) return;
-    
-    const headers = table.querySelectorAll('thead th');
-    
-    headers.forEach((header, index) => {
-        header.style.cursor = 'pointer';
-        header.addEventListener('click', function() {
-            sortTable(index);
-        });
-    });
-});
-
-function sortTable(columnIndex) {
-    const table = document.getElementById('reportTable');
-    const tbody = table.querySelector('tbody');
-    const rows = Array.from(tbody.querySelectorAll('tr'));
-    
-    // Determinar dirección de ordenamiento
-    const isAscending = table.dataset.sortDirection !== 'asc';
-    table.dataset.sortDirection = isAscending ? 'asc' : 'desc';
-    
-    // Ordenar filas
-    rows.sort((a, b) => {
-        const aValue = a.cells[columnIndex].innerText.trim();
-        const bValue = b.cells[columnIndex].innerText.trim();
-        
-        // Intentar ordenar como números si es posible
-        const aNum = parseFloat(aValue.replace(/[^\d.-]/g, ''));
-        const bNum = parseFloat(bValue.replace(/[^\d.-]/g, ''));
-        
-        if (!isNaN(aNum) && !isNaN(bNum)) {
-            return isAscending ? aNum - bNum : bNum - aNum;
-        }
-        
-        // Ordenar como texto
-        return isAscending ? 
-            aValue.localeCompare(bValue) : 
-            bValue.localeCompare(aValue);
-    });
-    
-    // Reordenar DOM
-    rows.forEach(row => tbody.appendChild(row));
-    
-    // Actualizar iconos de ordenamiento
-    const allHeaders = table.querySelectorAll('thead th i.fa-sort');
-    allHeaders.forEach(icon => {
-        icon.className = 'fas fa-sort ms-2 text-muted';
-    });
-    
-    const currentIcon = table.querySelectorAll('thead th')[columnIndex].querySelector('i');
-    if (currentIcon) {
-        currentIcon.className = isAscending ? 
-            'fas fa-sort-up ms-2 text-primary' : 
-            'fas fa-sort-down ms-2 text-primary';
-    }
-}
-
-// Filtro de búsqueda rápida
-function agregarBusqueda() {
-    const cardHeader = document.querySelector('.card-header');
-    if (!cardHeader || document.getElementById('searchInput')) return;
-    
-    const searchHtml = `
-        <div class="input-group" style="max-width: 300px;">
-            <span class="input-group-text bg-light border-end-0">
-                <i class="fas fa-search text-muted"></i>
-            </span>
-            <input type="text" class="form-control border-start-0" 
-                   id="searchInput" placeholder="Buscar en la tabla..."
-                   onkeyup="filtrarTabla()">
-        </div>
-    `;
-    
-    cardHeader.insertAdjacentHTML('beforeend', searchHtml);
-}
-
-function filtrarTabla() {
-    const input = document.getElementById('searchInput');
-    const filter = input.value.toLowerCase();
-    const table = document.getElementById('reportTable');
-    const rows = table.querySelectorAll('tbody tr');
-    
-    rows.forEach(row => {
-        const text = row.textContent.toLowerCase();
-        row.style.display = text.includes(filter) ? '' : 'none';
-    });
-}
-
-// Inicializar funcionalidades adicionales
-document.addEventListener('DOMContentLoaded', function() {
-    agregarBusqueda();
-    
-    // Tooltip para badges
-    const badges = document.querySelectorAll('.badge');
-    badges.forEach(badge => {
-        badge.setAttribute('title', badge.textContent);
-        new bootstrap.Tooltip(badge);
-    });
-    
-    // Animación de carga de filas
-    const rows = document.querySelectorAll('tbody tr');
-    rows.forEach((row, index) => {
-        row.style.opacity = '0';
-        row.style.transform = 'translateY(20px)';
-        setTimeout(() => {
-            row.style.transition = 'all 0.3s ease';
-            row.style.opacity = '1';
-            row.style.transform = 'translateY(0)';
-        }, index * 50);
-    });
-});
-
-// Función para refrescar datos
-function refrescarDatos() {
-    const btn = event.target;
-    const originalHtml = btn.innerHTML;
-    
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Actualizando...';
-    btn.disabled = true;
-    
-    setTimeout(() => {
-        window.location.reload();
-    }, 1000);
-}
-
-// Modo oscuro toggle
-function toggleModoOscuro() {
-    document.body.classList.toggle('dark-mode');
-    localStorage.setItem('darkMode', document.body.classList.contains('dark-mode'));
-}
-
-// Cargar preferencia de modo oscuro
-document.addEventListener('DOMContentLoaded', function() {
-    if (localStorage.getItem('darkMode') === 'true') {
-        document.body.classList.add('dark-mode');
-    }
-});
-</script>
-
-<!-- Estilos para modo oscuro -->
-<style>
-.dark-mode {
-    background-color: #1a202c !important;
-    color: #e2e8f0 !important;
-}
-
-.dark-mode .card {
-    background-color: #2d3748 !important;
-    border-color: #4a5568 !important;
-}
-
-.dark-mode .table {
-    color: #e2e8f0 !important;
-}
-
-.dark-mode .table-hover tbody tr:hover {
-    background-color: #4a5568 !important;
-}
-
-.dark-mode .form-control,
-.dark-mode .form-select {
-    background-color: #2d3748 !important;
-    border-color: #4a5568 !important;
-    color: #e2e8f0 !important;
-}
-
-.dark-mode .btn-outline-primary {
-    color: #63b3ed !important;
-    border-color: #63b3ed !important;
-}
-
-.dark-mode .btn-outline-secondary {
-    color: #cbd5e0 !important;
-    border-color: #cbd5e0 !important;
-}
-
-/* Responsive mejoras */
-@media (max-width: 992px) {
-    .card-header .d-flex {
-        flex-direction: column;
-        gap: 1rem;
-    }
-    
-    .input-group {
-        max-width: 100% !important;
-    }
-}
-
-@media (max-width: 576px) {
-    .bg-gradient-to-r .d-flex {
-        flex-direction: column;
-        text-align: center;
-    }
-    
-    .dropdown {
-        margin-top: 1rem;
-    }
-    
-    .table-responsive {
-        font-size: 0.8em;
-    }
-    
-    .badge {
-        font-size: 0.6em;
-    }
+.dropdown-item:hover {
+    background: var(--light-gray);
+    transform: translateX(5px);
 }
 
 /* Animaciones */
@@ -638,42 +738,168 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 }
 
-.card {
-    animation: fadeInUp 0.5s ease-out;
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
 }
 
-/* Mejoras de accesibilidad */
-.btn:focus,
-.form-control:focus,
-.form-select:focus {
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25) !important;
+.card-elegant {
+    animation: fadeInUp 0.6s ease-out;
 }
 
-.table th:focus {
-    outline: 2px solid #2563eb;
-    outline-offset: -2px;
+.stat-card {
+    animation: slideInRight 0.6s ease-out;
 }
 
-/* Indicadores de carga */
-.loading {
-    position: relative;
-    overflow: hidden;
+.stat-card:nth-child(2) { animation-delay: 0.1s; }
+.stat-card:nth-child(3) { animation-delay: 0.2s; }
+.stat-card:nth-child(4) { animation-delay: 0.3s; }
+
+/* Responsive mejorado */
+@media (max-width: 992px) {
+    .header-content {
+        padding: 20px;
+    }
+    
+    .header-info {
+        margin-bottom: 20px;
+    }
+    
+    .table-actions {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .stat-value {
+        font-size: 1.8rem;
+    }
 }
 
-.loading::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-    animation: shimmer 2s infinite;
+@media (max-width: 768px) {
+    .header-card {
+        min-height: 150px;
+    }
+    
+    .icon-container {
+        width: 50px;
+        height: 50px;
+    }
+    
+    .info-badge {
+        font-size: 0.8rem;
+        padding: 6px 12px;
+    }
+    
+    .display-6 {
+        font-size: 1.5rem;
+    }
+    
+    .stat-card {
+        margin-bottom: 15px;
+    }
+    
+    .stat-value {
+        font-size: 1.5rem;
+    }
+    
+    .stat-icon {
+        width: 50px;
+        height: 50px;
+    }
+    
+    .table-container {
+        font-size: 0.8rem;
+    }
+    
+    .table-header,
+    .table-cell {
+        padding: 12px 15px;
+    }
+    
+    .badge {
+        font-size: 0.7rem;
+        padding: 4px 8px;
+    }
 }
 
-@keyframes shimmer {
-    0% { left: -100%; }
-    100% { left: 100%; }
+@media (max-width: 576px) {
+    .header-content .d-flex {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .header-actions {
+        margin-top: 20px;
+        width: 100%;
+    }
+    
+    .btn-exportar {
+        width: 100%;
+    }
+    
+    .card-header-elegant .d-flex,
+    .card-header-table .d-flex {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .table-actions {
+        width: 100%;
+    }
+    
+    .form-select-elegant {
+        margin-bottom: 15px;
+    }
+}
+
+/* Modo oscuro */
+.dark-mode {
+    background-color: var(--azul-noche) !important;
+    color: var(--gris-claro) !important;
+}
+
+.dark-mode .card-elegant {
+    background: var(--gris-oscuro) !important;
+    border-color: var(--gris-plomo) !important;
+    color: var(--gris-claro) !important;
+}
+
+.dark-mode .card-header-elegant,
+.dark-mode .card-header-table {
+    background: linear-gradient(135deg, var(--gris-plomo) 0%, var(--gris-oscuro) 100%) !important;
+    color: white !important;
+}
+
+.dark-mode .table-header {
+    background: linear-gradient(135deg, var(--gris-plomo) 0%, var(--azul-noche) 100%) !important;
+}
+
+.dark-mode .table-row:hover {
+    background: linear-gradient(135deg, var(--gris-plomo) 0%, var(--gris-oscuro) 30%) !important;
+}
+
+.dark-mode .value-default {
+    color: var(--gris-claro) !important;
+}
+
+.dark-mode .form-select-elegant {
+    background: var(--gris-oscuro);
+    border-color: var(--gris-plomo);
+    color: white;
+}
+
+.dark-mode .empty-state {
+    color: var(--gris-plata);
+}
+
+.dark-mode .empty-title {
+    color: white;
 }
 </style>
 {% endblock %}

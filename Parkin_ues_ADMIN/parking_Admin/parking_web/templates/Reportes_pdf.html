@@ -1,119 +1,196 @@
+{% load static %}
+{% load dict_extras %}
 <!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
     <title>{{ titulo }}</title>
     <style>
-        /* Estilos base */
+        /* Estilos base mejorados */
         body {
-            font-family: 'Helvetica', 'Arial', sans-serif;
+            font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
             font-size: 10pt;
-            line-height: 1.4;
+            line-height: 1.5;
             color: #333;
+            margin: 0;
+            padding: 15px;
+            background-color: #f9fafb;
         }
         
-        /* Encabezado */
+        /* Contenedor principal */
+        .container {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            padding: 25px;
+            margin: 0 auto;
+            max-width: 100%;
+            overflow-x: auto;
+        }
+        
+        /* Encabezado mejorado */
         .header {
-            margin-bottom: 20px;
-            border-bottom: 2px solid #2563eb;
-            padding-bottom: 10px;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #3b82f6;
+            position: relative;
         }
         
-        .logo {
-            height: 50px;
+        .logo-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             margin-bottom: 10px;
         }
         
-        .titulo-reporte {
-            font-size: 16pt;
-            font-weight: bold;
-            color: #1e40af;
-            text-align: center;
-            margin: 10px 0;
+        .logo {
+            height: 55px;
+            max-width: 200px;
         }
         
-        /* Información del reporte */
+        .titulo-reporte {
+            font-size: 18pt;
+            font-weight: 600;
+            color: #1e3a8a;
+            text-align: center;
+            margin: 15px 0;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        /* Información del reporte mejorada */
         .info-reporte {
             display: flex;
             justify-content: space-between;
             margin-bottom: 15px;
             font-size: 9pt;
+            background-color: #f0f5ff;
+            padding: 8px 12px;
+            border-radius: 6px;
+            border-left: 4px solid #3b82f6;
         }
         
-        /* Tabla de datos */
+        .info-item {
+            display: flex;
+            align-items: center;
+        }
+        
+        .info-item i {
+            margin-right: 5px;
+            color: #3b82f6;
+        }
+        
+        /* Tabla de datos mejorada */
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 10px;
+            margin: 15px 0;
             page-break-inside: auto;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
         }
         
         th {
             background-color: #1e40af;
             color: white;
             text-align: left;
-            padding: 6px 8px;
-            font-weight: bold;
+            padding: 8px 12px;
+            font-weight: 600;
             font-size: 9pt;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            position: sticky;
+            top: 0;
         }
         
         td {
-            padding: 5px 8px;
-            border-bottom: 1px solid #ddd;
+            padding: 8px 12px;
+            border-bottom: 1px solid #e5e7eb;
             font-size: 9pt;
-            vertical-align: top;
+            vertical-align: middle;
         }
         
         tr:nth-child(even) {
             background-color: #f8fafc;
         }
         
-        /* Estados */
+        tr:hover {
+            background-color: #f0f5ff;
+        }
+        
+        /* Estados mejorados */
         .badge {
             display: inline-block;
-            padding: 2px 6px;
-            border-radius: 10px;
-            font-size: 8pt;
-            font-weight: bold;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 8.5pt;
+            font-weight: 600;
+            text-align: center;
+            min-width: 70px;
         }
         
         .badge-success {
             background-color: #dcfce7;
             color: #166534;
+            border: 1px solid #bbf7d0;
         }
         
         .badge-danger {
             background-color: #fee2e2;
             color: #991b1b;
+            border: 1px solid #fecaca;
         }
         
         .badge-warning {
             background-color: #fef3c7;
             color: #92400e;
+            border: 1px solid #fde68a;
         }
         
         .badge-secondary {
             background-color: #e5e7eb;
             color: #374151;
+            border: 1px solid #d1d5db;
         }
         
-        /* Fechas y monedas */
+        .badge-info {
+            background-color: #dbeafe;
+            color: #1e40af;
+            border: 1px solid #bfdbfe;
+        }
+        
+        /* Fechas y monedas mejoradas */
         .fecha {
             color: #2563eb;
+            font-weight: 500;
+            white-space: nowrap;
         }
         
         .moneda {
             color: #059669;
+            font-weight: 600;
+            white-space: nowrap;
         }
         
-        /* Pie de página */
+        .text-muted {
+            color: #9ca3af;
+            font-style: italic;
+        }
+        
+        /* Pie de página mejorado */
         .footer {
-            margin-top: 20px;
-            padding-top: 10px;
-            border-top: 1px solid #ddd;
-            font-size: 8pt;
+            margin-top: 30px;
+            padding-top: 15px;
+            border-top: 1px solid #e5e7eb;
+            font-size: 8.5pt;
             text-align: center;
-            color: #666;
+            color: #6b7280;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .page-number:after {
+            content: "Página " counter(page);
         }
         
         /* Saltos de página */
@@ -124,68 +201,141 @@
         /* Para evitar cortar filas entre páginas */
         tr {
             page-break-inside: avoid;
+            page-break-after: auto;
+        }
+        
+        /* Mensaje sin datos */
+        .no-data {
+            text-align: center;
+            margin: 50px 0;
+            padding: 30px;
+            background-color: #f8fafc;
+            border-radius: 8px;
+            border: 1px dashed #e5e7eb;
+        }
+        
+        .no-data-icon {
+            font-size: 40pt;
+            color: #d1d5db;
+            margin-bottom: 15px;
+        }
+        
+        .no-data-text {
+            font-size: 12pt;
+            color: #6b7280;
+            font-weight: 500;
+        }
+        
+        /* Alineaciones específicas */
+        .text-right {
+            text-align: right;
+        }
+        
+        .text-center {
+            text-align: center;
+        }
+        
+        /* Responsividad */
+        @media print {
+            body {
+                background-color: white;
+                padding: 0;
+            }
+            
+            .container {
+                box-shadow: none;
+                padding: 10px;
+            }
+            
+            .no-print {
+                display: none;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="header">
-        {% if logo_path %}
-        <img src="{{ logo_path }}" class="logo" alt="Logo">
-        {% endif %}
-        <div class="titulo-reporte">{{ titulo }}</div>
-        <div class="info-reporte">
-            <div>Generado el: {{ fecha_generacion }}</div>
-            <div>Total de registros: {{ total_registros }}</div>
+    <div class="container">
+        <div class="header">
+            <div class="logo-container">
+                <img src="{% static 'images/logo_rojo_ues.png' %}" 
+                    alt="Logo UES" 
+                    class="logo">
+                <div class="no-print" style="font-size: 8pt; color: #6b7280;">
+                    ID Reporte: {{ report_id|default:"N/A" }}
+                </div>
+            </div>
+            <div class="titulo-reporte">{{ titulo }}</div>
+            <div class="info-reporte">
+                <div class="info-item">
+                    <span>📅 Generado el: {{ fecha_generacion }}</span>
+                </div>
+                <div class="info-item">
+                    <span>📊 Total registros: {{ total_registros }}</span>
+                </div>
+                {% if filtros_aplicados %}
+                <div class="info-item">
+                    <span>🔍 Filtros: {{ filtros_aplicados }}</span>
+                </div>
+                {% endif %}
+            </div>
         </div>
-    </div>
 
-    {% if data %}
-    <table>
-        <thead>
-            <tr>
-                {% for header in headers %}
-                <th>{{ header }}</th>
+        {% if data %}
+        <table>
+            <thead>
+                <tr>
+                    {% for header in headers %}
+                    <th>{{ header }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in data %}
+                <tr>
+                    {% for header in headers %}
+                    <td class="{% if '$' in item|lookup:header %}text-right{% endif %}">
+                        {% with value=item|lookup:header %}
+                            {% if value == '-' %}
+                                <span class="text-muted">-</span>
+                            {% elif 'Activo' in value or 'Disponible' in value or 'Sí' in value or 'Pagada' in value or 'Aprobado' in value %}
+                                <span class="badge badge-success">{{ value }}</span>
+                            {% elif 'Inactivo' in value or 'No' in value or 'Expirada' in value or 'Cancelada' in value or 'Rechazado' in value %}
+                                <span class="badge badge-danger">{{ value }}</span>
+                            {% elif 'Pendiente' in value or 'Reservado' in value or 'Suspendida' in value or 'En revisión' in value %}
+                                <span class="badge badge-warning">{{ value }}</span>
+                            {% elif 'Ocupado' in value or 'Mantenimiento' in value or 'Vencida' in value %}
+                                <span class="badge badge-secondary">{{ value }}</span>
+                            {% elif 'Procesando' in value or 'En curso' in value %}
+                                <span class="badge badge-info">{{ value }}</span>
+                            {% elif '$' in value %}
+                                <span class="moneda">{{ value }}</span>
+                            {% elif '/' in value and value|length == 10 %}
+                                <span class="fecha">{{ value }}</span>
+                            {% else %}
+                                {{ value }}
+                            {% endif %}
+                        {% endwith %}
+                    </td>
+                    {% endfor %}
+                </tr>
                 {% endfor %}
-            </tr>
-        </thead>
-        <tbody>
-            {% for item in data %}
-            <tr>
-                {% for header in headers %}
-                <td>
-                    {% with value=item|lookup:header %}
-                        {% if value == '-' %}
-                            <span class="text-muted">-</span>
-                        {% elif 'Activo' in value or 'Disponible' in value or 'Sí' in value or 'Pagada' in value %}
-                            <span class="badge badge-success">{{ value }}</span>
-                        {% elif 'Inactivo' in value or 'No' in value or 'Expirada' in value or 'Cancelada' in value %}
-                            <span class="badge badge-danger">{{ value }}</span>
-                        {% elif 'Pendiente' in value or 'Reservado' in value or 'Suspendida' in value %}
-                            <span class="badge badge-warning">{{ value }}</span>
-                        {% elif 'Ocupado' in value or 'Mantenimiento' in value or 'Vencida' in value %}
-                            <span class="badge badge-secondary">{{ value }}</span>
-                        {% elif '$' in value %}
-                            <span class="moneda">{{ value }}</span>
-                        {% elif '/' in value and value|length == 10 %}
-                            <span class="fecha">{{ value }}</span>
-                        {% else %}
-                            {{ value }}
-                        {% endif %}
-                    {% endwith %}
-                </td>
-                {% endfor %}
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    {% else %}
-    <div style="text-align: center; margin-top: 50px;">
-        <p style="font-size: 12pt; color: #666;">No hay datos disponibles para este reporte</p>
-    </div>
-    {% endif %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="no-data">
+            <div class="no-data-icon">📭</div>
+            <p class="no-data-text">No hay datos disponibles para este reporte</p>
+            {% if filtros_aplicados %}
+            <p style="font-size: 10pt; color: #9ca3af;">Intenta ajustar los filtros aplicados</p>
+            {% endif %}
+        </div>
+        {% endif %}
 
-    <div class="footer">
-        Reporte generado automáticamente por el sistema - {{ fecha_generacion }}
+        <div class="footer">
+            <div>{{ empresa_nombre|default:"Sistema de Reportes" }}</div>
+            <div class="page-number"></div>
+            <div>Reporte generado automáticamente - {{ fecha_generacion }}</div>
+        </div>
     </div>
 </body>
 </html>
