@@ -1,0 +1,324 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Historial de Movimientos - Sistema de Parqueo UES{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="mb-0">
+                        <i class="fas fa-history me-2 text-primary"></i>
+                        Registros de Movimientos
+                    </h2>
+                    <p class="text-muted mb-0">
+                        <span class="badge bg-danger">{{ total_registros }} registros</span>
+                    </p>
+                </div>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-outline-success" onclick="exportarHistorial()">
+                        <i class="fas fa-file-csv me-2"></i>Exportar CSV
+                    </button>
+                    <button class="btn btn-primary" onclick="location.reload()">
+                        <i class="fas fa-sync-alt me-2"></i>Actualizar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i class="fas fa-filter me-2"></i>Filtros de Búsqueda
+            </h5>
+        </div>
+        <div class="card-body">
+            <form method="GET" id="filtrosForm">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label for="fecha_inicio" class="form-label">Fecha Inicio</label>
+                        <input type="date" class="form-control" id="fecha_inicio" name="fecha_inicio" 
+                               value="{{ filtros.fecha_inicio }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="fecha_fin" class="form-label">Fecha Fin</label>
+                        <input type="date" class="form-control" id="fecha_fin" name="fecha_fin" 
+                               value="{{ filtros.fecha_fin }}">
+                    </div>
+                    <div class="col-md-2">
+                        <label for="accion" class="form-label">Acción</label>
+                        <select class="form-select" id="accion" name="accion">
+                            <option value="">Todas</option>
+                            {% for accion in acciones_unicas %}
+                                <option value="{{ accion }}" {% if filtros.accion == accion %}selected{% endif %}>
+                                    {{ accion|title }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label for="espacio" class="form-label">Espacio</label>
+                        <select class="form-select" id="espacio" name="espacio">
+                            <option value="">Todos</option>
+                            {% for espacio in espacios_unicos %}
+                                <option value="{{ espacio }}" {% if filtros.espacio == espacio %}selected{% endif %}>
+                                    {{ espacio }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label for="buscar" class="form-label">Buscar</label>
+                        <input type="text" class="form-control" id="buscar" name="buscar" 
+                               placeholder="Buscar..." value="{{ filtros.buscar }}">
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <button type="submit" class="btn btn-primary me-2">
+                            <i class="fas fa-search me-2"></i>Filtrar
+                        </button>
+                        <a href="{% url 'historial_movimientos' %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-times me-2"></i>Limpiar
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tabla de historial -->
+    <div class="card">
+        <div class="card-body p-0">
+            {% if error %}
+                <div class="alert alert-danger m-3">
+                    <i class="fas fa-exclamation-triangle me-2"></i>{{ error }}
+                </div>
+            {% elif historial %}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-dark">
+                            <tr>
+                                <th><i class="fas fa-hashtag me-1"></i>ID</th>
+                                <th><i class="fas fa-cog me-1"></i>Acción</th>
+                                <th><i class="fas fa-parking me-1"></i>Espacio</th>
+                                <th><i class="fas fa-calendar me-1"></i>Fecha</th>
+                                <th><i class="fas fa-sort-numeric-up me-1"></i>N° Parqueo</th>
+                                <th><i class="fas fa-user me-1"></i>Usuario</th>
+                                <th><i class="fas fa-info-circle me-1"></i>Detalles</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for registro in historial %}
+                                <tr>
+                                    <td>
+                                        <code class="text-muted" style="font-size: 0.8em;">
+                                            -{{ registro.id|slice:"1:8" }}...
+                                        </code>
+                                    </td>
+                                    <td>
+                                        {% if registro.accion == 'asignacion_parqueo' %}
+                                            <span class="badge bg-success">
+                                                <i class="fas fa-plus-circle me-1"></i>Asignación
+                                            </span>
+                                        {% elif registro.accion == 'liberacion_parqueo' %}
+                                            <span class="badge bg-warning text-dark">
+                                                <i class="fas fa-minus-circle me-1"></i>Liberación
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-info">
+                                                <i class="fas fa-question-circle me-1"></i>{{ registro.accion|title }}
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if registro.espacio_key %}
+                                            <span class="badge" style="background-color: #8B0000; color: white;">
+                                                {{ registro.espacio_key }}
+                                            </span>
+                                        {% else %}
+                                            <span class="text-muted">Sin espacio</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if registro.fecha_formateada and registro.fecha_formateada != 'Sin fecha' %}
+                                            <div class="d-flex flex-column">
+                                                <span class="fw-bold" style="font-size: 0.9em;">
+                                                    {{ registro.fecha_formateada|date:"d/m/Y" }}
+                                                </span>
+                                                <small class="text-muted">
+                                                    {{ registro.fecha_formateada|date:"H:i:s" }}
+                                                </small>
+                                            </div>
+                                        {% else %}
+                                            <span class="text-muted">Sin fecha</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if registro.numero_parqueo %}
+                                            <span class="badge bg-secondary">
+                                                #{{ registro.numero_parqueo }}
+                                            </span>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if registro.user_id %}
+                                            <div class="d-flex align-items-center">
+                                                <div class="rounded-circle bg-light d-inline-flex align-items-center justify-content-center me-2" 
+                                                     style="width: 24px; height: 24px;">
+                                                    <i class="fas fa-user text-danger" style="font-size: 10px;"></i>
+                                                </div>
+                                                <span>ID: {{ registro.user_id }}</span>
+                                            </div>
+                                        {% else %}
+                                            <span class="text-muted">Sin usuario</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-info" 
+                                                onclick="verDetalles('{{ registro.id }}', '{{ registro.accion|default:"Sin acción" }}', '{{ registro.espacio_key|default:"Sin espacio" }}', '{{ registro.fecha_formateada|default:"Sin fecha" }}', '{{ registro.numero_parqueo|default:"Sin número" }}', '{{ registro.user_id|default:"Sin usuario" }}')">
+                                            <i class="fas fa-eye me-1"></i>Ver
+                                        </button>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Paginación -->
+                {% if historial.has_other_pages %}
+                    <div class="card-footer">
+                        <nav aria-label="Paginación del historial">
+                            <ul class="pagination justify-content-center mb-0">
+                                {% if historial.has_previous %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page=1{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                                            <i class="fas fa-angle-double-left"></i>
+                                        </a>
+                                    </li>
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ historial.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                                            <i class="fas fa-angle-left"></i>
+                                        </a>
+                                    </li>
+                                {% endif %}
+
+                                <li class="page-item active">
+                                    <span class="page-link">
+                                        Página {{ historial.number }} de {{ historial.paginator.num_pages }}
+                                    </span>
+                                </li>
+
+                                {% if historial.has_next %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ historial.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                                            <i class="fas fa-angle-right"></i>
+                                        </a>
+                                    </li>
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ historial.paginator.num_pages }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                                            <i class="fas fa-angle-double-right"></i>
+                                        </a>
+                                    </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                    </div>
+                {% endif %}
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No hay registros de movimientos</h5>
+                    <p class="text-muted">No se encontraron registros con los filtros aplicados.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Modal para detalles -->
+<div class="modal fade" id="detallesModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-info-circle me-2"></i>Detalles del Movimiento
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="detallesContent">
+                    <!-- Contenido cargado dinámicamente -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function verDetalles(id, accion, espacio, fecha, numero, usuario) {
+    const content = `
+        <div class="row">
+            <div class="col-12">
+                <table class="table table-borderless">
+                    <tr>
+                        <td><strong>ID del Registro:</strong></td>
+                        <td><code>-${id.substring(1, 8)}...</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Acción:</strong></td>
+                        <td><span class="badge bg-primary">${accion}</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Espacio:</strong></td>
+                        <td><span class="badge bg-info">${espacio}</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Fecha y Hora:</strong></td>
+                        <td>${fecha}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Número de Parqueo:</strong></td>
+                        <td><span class="badge bg-secondary">#${numero}</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Usuario:</strong></td>
+                        <td>ID: ${usuario}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    `;
+    
+    document.getElementById('detallesContent').innerHTML = content;
+    new bootstrap.Modal(document.getElementById('detallesModal')).show();
+}
+
+function exportarHistorial() {
+    window.location.href = '{% url "exportar_historial" %}';
+}
+
+// Auto-submit del formulario cuando cambian los filtros de select
+document.addEventListener('DOMContentLoaded', function() {
+    const selects = document.querySelectorAll('#accion, #espacio, #fecha_inicio, #fecha_fin');
+    
+    selects.forEach(select => {
+        select.addEventListener('change', function() {
+            document.getElementById('filtrosForm').submit();
+        });
+    });
+});
+</script>
+{% endblock %}

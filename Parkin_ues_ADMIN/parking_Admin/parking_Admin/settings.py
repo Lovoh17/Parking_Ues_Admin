@@ -89,7 +89,23 @@ DATABASES = {
     }
 }
 
-AUTH_USER_MODEL = 'parking_web.Usuario'
+FIREBASE_CONFIG = {
+    'CREDENTIALS_PATH': BASE_DIR / 'config' / 'serviceAccountKey.json',
+    'DATABASE_URL': 'https://parkingues-69cfa-default-rtdb.firebaseio.com/',
+    'SYNC_ENABLED': True,
+    'SYNC_BATCH_SIZE': 100,
+}
+
+CELERY_BROKER_URL = 'redis://localhost:6379/0'
+CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
+CELERY_BEAT_SCHEDULE = {
+    'sync-every-5-minutes': {
+        'task': 'parking.tasks.sync_parking_data',
+        'schedule': 300.0,  # 5 minutos
+    },
+}
+
+#AUTH_USER_MODEL = 'parking_web.Usuario'
 
 # Password validation
 # https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators

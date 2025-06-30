@@ -1,0 +1,283 @@
+    :root {
+        --primary-color: #800000;
+        --secondary-color: #6D2323;
+        --accent-color: #03DAC6;
+        --rojo-brillante: #BF3131;
+        --rojo-suave: #E55050;
+        --rojo-granate: #AF3E3E;
+        --beige-dorado: #EAD196;
+        --beige-claro: #E5D0AC;
+        --crema-claro: #FEF9E1;
+        --gris-oscuro: #212121;
+        --gris-plomo: #757575;
+        --gris-plata: #BDBDBD;
+        --gris-claro: #EEEEEE;
+        --light-gray: #F5F5F5;
+        --dorado: #efb810;
+        
+        --border-radius: 8px;
+        --shadow-light: 0 2px 8px rgba(0, 0, 0, 0.08);
+        --shadow-medium: 0 4px 12px rgba(0, 0, 0, 0.12);
+        --transition: all 0.2s ease;
+    }
+
+    body {
+        background-color: #f8f9fa;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    .main-container {
+        background: white;
+        border-radius: var(--border-radius);
+        margin: 15px;
+        padding: 20px;
+        box-shadow: var(--shadow-light);
+    }
+
+    .header-section {
+        background-color: var(--primary-color);
+        border-radius: var(--border-radius);
+        padding: 20px;
+        color: white;
+        margin-bottom: 20px;
+    }
+
+    .page-title {
+        font-size: 1.8rem;
+        font-weight: 700;
+        margin-bottom: 5px;
+    }
+
+    .page-subtitle {
+        font-size: 1rem;
+        opacity: 0.9;
+    }
+
+    .btn-refresh {
+        background-color: white;
+        border: none;
+        border-radius: var(--border-radius);
+        padding: 8px 16px;
+        font-weight: 600;
+        color: var(--primary-color);
+        transition: var(--transition);
+    }
+
+    .btn-refresh:hover {
+        background-color: var(--gris-claro);
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 15px;
+        margin-bottom: 20px;
+    }
+
+    .stat-card {
+        background: white;
+        border-radius: var(--border-radius);
+        padding: 15px;
+        text-align: center;
+        box-shadow: var(--shadow-light);
+        border-left: 4px solid var(--primary-color);
+    }
+
+    .stat-icon {
+        font-size: 1.5rem;
+        margin-bottom: 10px;
+        color: var(--primary-color);
+    }
+
+    .stat-number {
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: var(--primary-color);
+        display: block;
+        margin-bottom: 5px;
+    }
+
+    .stat-label {
+        font-size: 0.9rem;
+        color: var(--gris-plomo);
+        font-weight: 500;
+    }
+
+    .section-card {
+        background: white;
+        border-radius: var(--border-radius);
+        box-shadow: var(--shadow-light);
+        margin-bottom: 20px;
+        overflow: hidden;
+    }
+
+    .section-header {
+        padding: 15px 20px;
+        background-color: var(--primary-color);
+        color: white;
+    }
+
+    .section-header.vip {
+        background-color: var(--rojo-granate);
+    }
+
+    .section-title {
+        font-size: 1.2rem;
+        font-weight: 600;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .spaces-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 15px;
+        padding: 15px;
+    }
+
+    .space-card {
+        background: white;
+        border-radius: var(--border-radius);
+        box-shadow: var(--shadow-light);
+        transition: var(--transition);
+        border-top: 4px solid transparent;
+    }
+
+    .space-card.available {
+        border-top-color: #28a745;
+    }
+
+    .space-card.occupied {
+        border-top-color: var(--rojo-brillante);
+    }
+
+    .space-card.reserved {
+        border-top-color: #fd7e14;
+    }
+
+    .space-header {
+        padding: 15px;
+        text-align: center;
+        border-bottom: 1px solid var(--gris-claro);
+    }
+
+    .space-number {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--primary-color);
+        margin-bottom: 8px;
+    }
+
+    .space-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-weight: 500;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+    }
+
+    .status-available {
+        background: #e6f7ed;
+        color: #28a745;
+    }
+
+    .status-occupied {
+        background: #fee2e2;
+        color: var(--rojo-brillante);
+    }
+
+    .status-reserved {
+        background: #fff4e6;
+        color: #fd7e14;
+    }
+
+    .badge-vip {
+        background-color: var(--dorado);
+        color: var(--gris-oscuro);
+        padding: 3px 8px;
+        border-radius: 12px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        margin-left: 8px;
+    }
+
+    .space-details {
+        padding: 15px;
+        font-size: 0.85rem;
+    }
+
+    .detail-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 0;
+        border-bottom: 1px solid var(--gris-claro);
+    }
+
+    .detail-item:last-child {
+        border-bottom: none;
+    }
+
+    .detail-icon {
+        color: var(--primary-color);
+        font-size: 0.9rem;
+        width: 20px;
+        text-align: center;
+    }
+
+    .detail-label {
+        font-weight: 500;
+        color: var(--gris-plomo);
+        min-width: 70px;
+    }
+
+    .detail-value {
+        color: var(--gris-oscuro);
+        font-weight: 500;
+    }
+
+    .space-footer {
+        padding: 10px 15px;
+        background: var(--light-gray);
+        border-top: 1px solid var(--gris-claro);
+        font-size: 0.75rem;
+        color: var(--gris-plomo);
+        text-align: center;
+    }
+
+    .no-spaces {
+        text-align: center;
+        padding: 30px 15px;
+        color: var(--gris-plomo);
+    }
+
+    .no-spaces-icon {
+        font-size: 2.5rem;
+        margin-bottom: 15px;
+        opacity: 0.5;
+        color: var(--primary-color);
+    }
+
+    @media (max-width: 768px) {
+        .main-container {
+            margin: 10px;
+            padding: 15px;
+        }
+        
+        .page-title {
+            font-size: 1.5rem;
+        }
+        
+        .stats-grid {
+            grid-template-columns: 1fr 1fr;
+        }
+        
+        .spaces-grid {
+            grid-template-columns: 1fr;
+        }
+    }

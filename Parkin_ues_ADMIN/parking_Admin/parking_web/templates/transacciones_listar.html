@@ -1,0 +1,333 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Transacciones - Sistema de Parqueo UES{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header de la página -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-0 text-gray-800">
+                <i class="fas fa-money-bill-wave me-2"></i>
+                Gestión de Transacciones
+            </h1>
+            <p class="text-muted">Administra y consulta todas las transacciones financieras</p>
+        </div>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalNuevaTransaccion">
+            <i class="fas fa-plus me-2"></i>Nueva Transacción
+        </button>
+    </div>
+
+    <!-- Tarjetas de estadísticas -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Total Ingresos
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                ${{ total_ingresos|floatformat:2 }}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-arrow-up fa-2x text-success"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-danger shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
+                                Total Egresos
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                ${{ total_egresos|floatformat:2 }}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-arrow-down fa-2x text-danger"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-{% if balance >= 0 %}info{% else %}warning{% endif %} shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-{% if balance >= 0 %}info{% else %}warning{% endif %} text-uppercase mb-1">
+                                Balance
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                ${{ balance|floatformat:2 }}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-balance-scale fa-2x text-{% if balance >= 0 %}info{% else %}warning{% endif %}"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                Total Transacciones
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                {{ total_transacciones }}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-list fa-2x text-primary"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex align-items-center">
+            <h6 class="m-0 font-weight-bold text-primary">
+                <i class="fas fa-filter me-2"></i>Filtros de Búsqueda
+            </h6>
+            <button class="btn btn-sm btn-outline-secondary ms-auto" type="button" data-bs-toggle="collapse" data-bs-target="#filtrosCollapse">
+                <i class="fas fa-chevron-down"></i>
+            </button>
+        </div>
+        <div class="collapse {% if filtro_actual.tipo or filtro_actual.rubro or filtro_actual.proveedor or filtro_actual.fecha_inicio or filtro_actual.fecha_fin or filtro_actual.busqueda %}show{% endif %}" id="filtrosCollapse">
+            <div class="card-body">
+                <form method="GET" class="row g-3">
+                    <div class="col-md-3">
+                        <label for="busqueda" class="form-label">Busqueda en Descripción</label>
+                        <input type="text" class="form-control" id="busqueda" name="busqueda" 
+                               value="{{ filtro_actual.busqueda }}" placeholder="Buscar...">
+                    </div>
+                    <div class="col-md-2">
+                        <label for="tipo" class="form-label">Tipo</label>
+                        <select class="form-select" id="tipo" name="tipo">
+                            <option value="">Todos</option>
+                            {% for tipo in tipos %}
+                                <option value="{{ tipo }}" {% if filtro_actual.tipo == tipo %}selected{% endif %}>
+                                    {{ tipo }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label for="rubro" class="form-label">Rubro</label>
+                        <select class="form-select" id="rubro" name="rubro">
+                            <option value="">Todos</option>
+                            {% for rubro in rubros %}
+                                <option value="{{ rubro }}" {% if filtro_actual.rubro == rubro %}selected{% endif %}>
+                                    {{ rubro }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label for="proveedor" class="form-label">Proveedor</label>
+                        <select class="form-select" id="proveedor" name="proveedor">
+                            <option value="">Todos</option>
+                            {% for proveedor in proveedores %}
+                                <option value="{{ proveedor }}" {% if filtro_actual.proveedor == proveedor %}selected{% endif %}>
+                                    {{ proveedor }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label for="fecha_inicio" class="form-label">Fecha Inicio</label>
+                        <input type="date" class="form-control" id="fecha_inicio" name="fecha_inicio" 
+                               value="{{ filtro_actual.fecha_inicio }}">
+                    </div>
+                    <div class="col-md-2">
+                        <label for="fecha_fin" class="form-label">Fecha Fin</label>
+                        <input type="date" class="form-control" id="fecha_fin" name="fecha_fin" 
+                               value="{{ filtro_actual.fecha_fin }}">
+                    </div>
+                    <div class="col-12">
+                        <button type="submit" class="btn btn-primary me-2">
+                            <i class="fas fa-search me-2"></i>Filtrar
+                        </button>
+                        <a href="{% url 'listar_transacciones' %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-times me-2"></i>Limpiar
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabla de transacciones -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">
+                <i class="fas fa-table me-2"></i>Lista de Transacciones
+            </h6>
+        </div>
+        <div class="card-body">
+            {% if transacciones %}
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Descripción</th>
+                                <th>Tipo</th>
+                                <th>Rubro</th>
+                                <th>Proveedor</th>
+                                <th>Monto</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for transaccion in transacciones %}
+                                <tr>
+                                    <td>{{ transaccion.fecha_formatted|default:transaccion.fecha }}</td>
+                                    <td>{{ transaccion.descripcion }}</td>
+                                    <td>
+                                        <span class="badge {% if transaccion.tipo == 'Ingreso' %}bg-success{% else %}bg-danger{% endif %}">
+                                            {% if transaccion.tipo == 'Ingreso' %}
+                                                <i class="fas fa-arrow-up me-1"></i>
+                                            {% else %}
+                                                <i class="fas fa-arrow-down me-1"></i>
+                                            {% endif %}
+                                            {{ transaccion.tipo }}
+                                        </span>
+                                    </td>
+                                    <td>{{ transaccion.rubro }}</td>
+                                    <td>{{ transaccion.proveedor }}</td>
+                                    <td class="text-end">
+                                        <span class="fw-bold {% if transaccion.tipo == 'Ingreso' %}text-success{% else %}text-danger{% endif %}">
+                                            {% if transaccion.tipo == 'Ingreso' %}+{% else %}-{% endif %}${{ transaccion.monto|floatformat:2 }}
+                                        </span>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Paginación -->
+                {% if transacciones.has_other_pages %}
+                    <nav aria-label="Paginación de transacciones">
+                        <ul class="pagination justify-content-center">
+                            {% if transacciones.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=1{% if request.GET.tipo %}&tipo={{ request.GET.tipo }}{% endif %}{% if request.GET.rubro %}&rubro={{ request.GET.rubro }}{% endif %}{% if request.GET.proveedor %}&proveedor={{ request.GET.proveedor }}{% endif %}{% if request.GET.fecha_inicio %}&fecha_inicio={{ request.GET.fecha_inicio }}{% endif %}{% if request.GET.fecha_fin %}&fecha_fin={{ request.GET.fecha_fin }}{% endif %}{% if request.GET.busqueda %}&busqueda={{ request.GET.busqueda }}{% endif %}">
+                                        <i class="fas fa-angle-double-left"></i>
+                                    </a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ transacciones.previous_page_number }}{% if request.GET.tipo %}&tipo={{ request.GET.tipo }}{% endif %}{% if request.GET.rubro %}&rubro={{ request.GET.rubro }}{% endif %}{% if request.GET.proveedor %}&proveedor={{ request.GET.proveedor }}{% endif %}{% if request.GET.fecha_inicio %}&fecha_inicio={{ request.GET.fecha_inicio }}{% endif %}{% if request.GET.fecha_fin %}&fecha_fin={{ request.GET.fecha_fin }}{% endif %}{% if request.GET.busqueda %}&busqueda={{ request.GET.busqueda }}{% endif %}">
+                                        <i class="fas fa-angle-left"></i>
+                                    </a>
+                                </li>
+                            {% endif %}
+
+                            <li class="page-item active">
+                                <span class="page-link">
+                                    Página {{ transacciones.number }} de {{ transacciones.paginator.num_pages }}
+                                </span>
+                            </li>
+
+                            {% if transacciones.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ transacciones.next_page_number }}{% if request.GET.tipo %}&tipo={{ request.GET.tipo }}{% endif %}{% if request.GET.rubro %}&rubro={{ request.GET.rubro }}{% endif %}{% if request.GET.proveedor %}&proveedor={{ request.GET.proveedor }}{% endif %}{% if request.GET.fecha_inicio %}&fecha_inicio={{ request.GET.fecha_inicio }}{% endif %}{% if request.GET.fecha_fin %}&fecha_fin={{ request.GET.fecha_fin }}{% endif %}{% if request.GET.busqueda %}&busqueda={{ request.GET.busqueda }}{% endif %}">
+                                        <i class="fas fa-angle-right"></i>
+                                    </a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ transacciones.paginator.num_pages }}{% if request.GET.tipo %}&tipo={{ request.GET.tipo }}{% endif %}{% if request.GET.rubro %}&rubro={{ request.GET.rubro }}{% endif %}{% if request.GET.proveedor %}&proveedor={{ request.GET.proveedor }}{% endif %}{% if request.GET.fecha_inicio %}&fecha_inicio={{ request.GET.fecha_inicio }}{% endif %}{% if request.GET.fecha_fin %}&fecha_fin={{ request.GET.fecha_fin }}{% endif %}{% if request.GET.busqueda %}&busqueda={{ request.GET.busqueda }}{% endif %}">
+                                        <i class="fas fa-angle-double-right"></i>
+                                    </a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                {% endif %}
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No se encontraron transacciones</h5>
+                    <p class="text-muted">No hay transacciones que coincidan con los filtros aplicados.</p>
+                    <a href="{% url 'listar_transacciones' %}" class="btn btn-outline-primary">
+                        <i class="fas fa-refresh me-2"></i>Ver todas las transacciones
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Modal para nueva transacción -->
+<div class="modal fade" id="modalNuevaTransaccion" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-plus me-2"></i>Nueva Transacción
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Aquí irá el formulario para nueva transacción -->
+                <p class="text-muted">Formulario para crear nueva transacción...</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function verDetalleTransaccion(id) {
+    // Implementar vista de detalles
+    console.log('Ver detalle de transacción:', id);
+}
+
+function editarTransaccion(id) {
+    // Implementar edición
+    console.log('Editar transacción:', id);
+}
+
+function eliminarTransaccion(id) {
+    if (confirm('¿Está seguro de que desea eliminar esta transacción?')) {
+        // Implementar eliminación
+        console.log('Eliminar transacción:', id);
+    }
+}
+
+// Auto-colapsar filtros si no hay filtros activos
+document.addEventListener('DOMContentLoaded', function() {
+    const filtrosCollapse = document.getElementById('filtrosCollapse');
+    const hasActiveFilters = {{ filtro_actual.tipo|yesno:"true,false" }} || 
+                            {{ filtro_actual.rubro|yesno:"true,false" }} || 
+                            {{ filtro_actual.proveedor|yesno:"true,false" }} || 
+                            "{{ filtro_actual.fecha_inicio }}" || 
+                            "{{ filtro_actual.fecha_fin }}" || 
+                            "{{ filtro_actual.busqueda }}";
+    
+    if (!hasActiveFilters) {
+        filtrosCollapse.classList.remove('show');
+    }
+});
+</script>
+{% endblock %}

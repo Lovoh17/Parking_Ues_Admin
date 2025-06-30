@@ -1,145 +1,205 @@
-import threading
-import time
+# sync_service.py - Servicio de sincronización mejorado
+import requests
+import firebase_admin
+from firebase_admin import credentials, db as realtime_db
+from django.conf import settings
+from django.apps import apps
 import logging
-from django.db import transaction
-from firebase_admin import db
-from firebase_admin.exceptions import FirebaseError
-from models import LocalData
+import json
+import uuid
+from typing import Dict, Any, Optional, List
+from pathlib import Path
+from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from django.db.models import F
+from ..models import SyncQueue
+
 
 logger = logging.getLogger(__name__)
 
-class SyncService:
-    """
-    Servicio para manejar la sincronización entre Firebase RTDB y SQLite local
-    """
-    
-    _instance = None
-    
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super(SyncService, cls).__new__(cls)
-            cls._instance._initialize()
-        return cls._instance
-    
-    def _initialize(self):
-        """Inicialización del servicio singleton"""
-        self.sync_interval = 60  # Segundos entre intentos de sincronización
-        self.sync_thread = None
-        self.running = False
-        self.last_sync = None
-        self.connection_retries = 3
-        self.retry_delay = 5  # Segundos entre reintentos
-
-    def start_sync(self):
-        """Inicia el servicio de sincronización en segundo plano"""
-        if not self.running:
-            self.running = True
-            self.sync_thread = threading.Thread(target=self._sync_loop, daemon=True)
-            self.sync_thread.start()
-            logger.info("Servicio de sincronización iniciado")
-
-    def stop_sync(self):
-        """Detiene el servicio de sincronización"""
-        if self.running:
-            self.running = False
-            if self.sync_thread:
-                self.sync_thread.join()
-            logger.info("Servicio de sincronización detenido")
-
-    def save_data(self, collection, key, data):
-        """
-        Guarda datos en Firebase o localmente según la conexión
+class AdvancedSyncService:
+    def __init__(self):
+        self.firebase_enabled = self._initialize_firebase()
+        self.max_workers = 4  # Para operaciones concurrentes
         
-        Args:
-            collection (str): Nombre de la colección/nodo (ej: 'usuarios')
-            key (str): ID del documento/registro
-            data (dict): Datos a guardar
-        """
+    def _initialize_firebase(self) -> bool:
+        """Configura la conexión con Firebase RTDB"""
         try:
-            if self._check_internet_connection():
-                self._save_to_firebase(collection, key, data)
-                logger.debug(f"Datos guardados en Firebase: {collection}/{key}")
-            else:
-                self._save_locally(collection, key, data)
-                logger.debug(f"Datos guardados localmente: {collection}/{key}")
+            CREDENTIALS_PATH = Path(__file__).resolve().parent.parent / 'config' / 'serviceAccountKey.json'
+            DATABASE_URL = 'https://parkingues-69cfa-default-rtdb.firebaseio.com/'
+            
+            if CREDENTIALS_PATH.exists() and not firebase_admin._apps:
+                cred = credentials.Certificate(str(CREDENTIALS_PATH))
+                firebase_admin.initialize_app(cred, {
+                    'databaseURL': DATABASE_URL,
+                    'databaseAuthVariableOverride': {
+                        'uid': 'parking-sync-service'
+                    }
+                })
+            
+            self.rtdb = realtime_db.reference()
+            logger.info("Firebase RTDB configurado correctamente")
+            return True
         except Exception as e:
-            logger.error(f"Error al guardar datos {collection}/{key}: {str(e)}")
-            raise
-
-    def _save_to_firebase(self, collection, key, data):
-        """Guarda datos directamente en Firebase RTDB"""
-        for attempt in range(self.connection_retries):
-            try:
-                ref = db.reference(f'{collection}/{key}')
-                ref.set(data)
-                return
-            except FirebaseError as e:
-                if attempt == self.connection_retries - 1:
-                    raise
-                time.sleep(self.retry_delay)
-                continue
-
-    def _save_locally(self, collection, key, data):
-        """Guarda datos en SQLite para sincronización posterior"""
-        with transaction.atomic():
-            LocalData.objects.update_or_create(
-                collection=collection,
-                key=key,
-                defaults={
-                    'data': data,
-                    'is_synced': False
-                }
-            )
-
-    def _sync_loop(self):
-        """Bucle principal de sincronización"""
-        while self.running:
-            try:
-                if self._check_internet_connection():
-                    self._sync_pending_data()
-            except Exception as e:
-                logger.error(f"Error en el bucle de sincronización: {str(e)}")
-            finally:
-                time.sleep(self.sync_interval)
-
-    def _sync_pending_data(self):
-        """Sincroniza todos los datos pendientes con Firebase"""
-        pending_data = LocalData.objects.filter(is_synced=False)
-        
-        if pending_data.exists():
-            logger.info(f"Iniciando sincronización de {pending_data.count()} registros pendientes")
+            logger.error(f"Error configurando Firebase: {e}")
+            self.rtdb = None
+            return False
+    
+    def check_connectivity(self, timeout: int = 5) -> bool:
+        """Verifica conectividad a Internet y a Firebase"""
+        try:
+            # Verifica conexión a Internet
+            requests.get("https://www.google.com", timeout=timeout)
             
-            success_count = 0
-            for item in pending_data:
+            # Verifica conexión a Firebase
+            if self.firebase_enabled:
+                test_ref = self.rtdb.child('connection_test')
+                test_ref.set({'ping': True, 'timestamp': datetime.utcnow().isoformat()})
+                test_ref.delete()
+            
+            return True
+        except Exception as e:
+            logger.warning(f"Error de conectividad: {e}")
+            return False
+    
+    def batch_sync(self, batch_size: int = 50) -> Dict[str, int]:
+        """Sincroniza operaciones pendientes en lotes con procesamiento concurrente"""
+        from ..models import SyncQueue
+        
+        if not self.check_connectivity():
+            return {'status': 'offline', 'processed': 0}
+        
+        pending_ops = SyncQueue.objects.filter(
+            processed=False,
+            attempts__lt=F('max_attempts')
+        ).order_by('created_at')[:batch_size]
+        
+        stats = {
+            'total': pending_ops.count(),
+            'success': 0,
+            'failed': 0,
+            'retries': 0
+        }
+        
+        # Procesamiento concurrente
+        with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+            futures = {
+                executor.submit(self._process_sync_operation, op): op 
+                for op in pending_ops
+            }
+            
+            for future in as_completed(futures):
+                op = futures[future]
                 try:
-                    self._save_to_firebase(item.collection, item.key, item.data)
-                    item.is_synced = True
-                    item.save()
-                    success_count += 1
+                    result = future.result()
+                    if result['success']:
+                        op.processed = True
+                        op.save()
+                        stats['success'] += 1
+                        
+                        # Marcar el modelo como sincronizado
+                        self._update_sync_status(op.model_name, op.object_id)
+                    else:
+                        op.attempts += 1
+                        op.last_error = result.get('error', '')[:500]
+                        op.save()
+                        stats['failed'] += 1
+                        stats['retries'] += 1
                 except Exception as e:
-                    logger.error(f"Error sincronizando {item.collection}/{item.key}: {str(e)}")
-                    # Continúa con los siguientes items
-            
-            self.last_sync = time.time()
-            logger.info(f"Sincronización completada. Éxitos: {success_count}/{pending_data.count()}")
-
-    def _check_internet_connection(self):
-        """
-        Verifica conexión a internet y acceso a Firebase
+                    logger.error(f"Error procesando operación {op.id}: {e}")
+                    op.attempts += 1
+                    op.last_error = str(e)[:500]
+                    op.save()
+                    stats['failed'] += 1
         
-        Returns:
-            bool: True si hay conexión funcional, False si no
-        """
-        for attempt in range(self.connection_retries):
-            try:
-                ref = db.reference('.info/connected')
-                return ref.get() is True
-            except Exception as e:
-                if attempt == self.connection_retries - 1:
-                    logger.warning("No se pudo verificar conexión con Firebase")
-                    return False
-                time.sleep(self.retry_delay)
-                continue
-
-# Instancia singleton del servicio
-sync_service = SyncService()
+        logger.info(f"Sincronización por lotes completada. Estadísticas: {stats}")
+        return stats
+    
+    def _process_sync_operation(self, sync_op: SyncQueue) -> Dict[str, Any]:
+        """Procesa una operación individual de sincronización"""
+        try:
+            # Mapeo de modelos a nodos RTDB
+            model_mapping = {
+                'User': 'users',
+                'ParkingSpace': 'parking_spaces',
+                'MembershipPlan': 'membership_plans',
+                'UserMembership': 'user_memberships',
+                'Infraction': 'infractions',
+                'CodigoAcceso': 'access_codes',
+                'ParkingSession': 'parking_sessions'
+            }
+            
+            node_name = model_mapping.get(sync_op.model_name)
+            if not node_name:
+                return {
+                    'success': False,
+                    'error': f"Modelo {sync_op.model_name} no mapeado"
+                }
+            
+            node_ref = self.rtdb.child(node_name).child(str(sync_op.object_id))
+            
+            if sync_op.operation == 'DELETE':
+                node_ref.delete()
+                return {'success': True}
+            
+            # Para CREATE y UPDATE
+            data = sync_op.data
+            
+            # Asegurar campos de sincronización
+            data['_synced_at'] = datetime.utcnow().isoformat()
+            data['_sync_version'] = data.get('sync_version', 1) + 1
+            
+            if sync_op.operation == 'CREATE':
+                # Verificar conflicto en creación
+                existing = node_ref.get()
+                if existing:
+                    return self._resolve_conflict(node_ref, existing, data, sync_op)
+            
+            node_ref.set(data)
+            return {'success': True}
+            
+        except Exception as e:
+            error_msg = f"Error en {sync_op.operation} {sync_op.model_name}: {str(e)}"
+            logger.error(error_msg)
+            return {'success': False, 'error': error_msg}
+    
+    def _resolve_conflict(self, node_ref, existing_data, new_data, sync_op):
+        """Resuelve conflictos de sincronización"""
+        # Estrategia: Conservar la versión más reciente
+        existing_updated = existing_data.get('updated_at')
+        new_updated = new_data.get('updated_at')
+        
+        if not existing_updated or (new_updated and new_updated > existing_updated):
+            node_ref.set(new_data)
+            return {'success': True}
+        
+        # Actualizar localmente con datos remotos si son más recientes
+        try:
+            model_class = apps.get_model('parking', sync_op.model_name)
+            obj = model_class.objects.get(id=sync_op.object_id)
+            
+            for field, value in existing_data.items():
+                if hasattr(obj, field) and not field.startswith('_'):
+                    setattr(obj, field, value)
+            
+            obj.synced = True
+            obj.save()
+            sync_op.processed = True
+            sync_op.save()
+            
+            return {'success': True, 'resolved': 'local_updated'}
+        except Exception as e:
+            error_msg = f"Error resolviendo conflicto: {str(e)}"
+            logger.error(error_msg)
+            return {'success': False, 'error': error_msg}
+    
+    def _update_sync_status(self, model_name: str, object_id: uuid.UUID):
+        """Actualiza el estado de sincronización en el modelo local"""
+        try:
+            model_class = apps.get_model('parking', model_name)
+            obj = model_class.objects.get(id=object_id)
+            obj.synced = True
+            obj.sync_version = F('sync_version') + 1
+            obj.save(update_fields=['synced', 'sync_version'])
+        except Exception as e:
+            logger.warning(f"No se pudo actualizar estado de sync para {model_name} {object_id}: {e}")

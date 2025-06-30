@@ -2,6 +2,7 @@
 from django.shortcuts import render, redirect,Http404
 from django.views.generic import View
 import logging
+from django.core.paginator import Paginator
 from pathlib import Path
 from django.http import JsonResponse
 from django.views.generic import TemplateView
@@ -11,6 +12,15 @@ from datetime import datetime
 from datetime import datetime, timedelta
 from django.contrib import messages
 import hashlib
+from django.views import View
+from django.shortcuts import render
+from django.http import HttpResponse, JsonResponse
+from django.template.loader import get_template
+from datetime import datetime
+import xlsxwriter
+from io import BytesIO
+from xhtml2pdf import pisa
+import json
 from django.shortcuts import get_object_or_404
 import csv
 from datetime import datetime, timedelta
@@ -22,6 +32,8 @@ from xhtml2pdf import pisa
 from openpyxl import Workbook
 from datetime import datetime, timedelta
 from collections import defaultdict
+from datetime import datetime
+import json
 ###################################################################################################################
 
 ###################################### FUNCIONES PARA LA CONECCION DE REALTIME DATABASE ###########################
@@ -56,7 +68,6 @@ def check_connection(request):
         }, status=503)
     
     try:
-        # Prueba mínima de conexión
         test_ref = rtdb.child('connection_test')
         test_ref.set({'ping': True})
         return JsonResponse({
@@ -79,7 +90,6 @@ def dashboard(request):
         })
 
     try:
-        # 1. Datos de espacios de parqueo
         espacios_ref = realtime_db.reference('parking_spaces')
         espacios_data = espacios_ref.get() or {}
         
@@ -93,23 +103,23 @@ def dashboard(request):
                 continue
                 
             ocupado = espacio_data.get('occupied', False)
+            reservado = espacio_data.get('reserved', False)
             es_vip = espacio_data.get('section', 'normal') == 'vip'
             
             espacio = {
                 'id': espacio_id,
                 'numero': espacio_data.get('spaceNumber', espacio_id.split('_')[-1]),
-                'disponible': not ocupado,
-                'ocupado_por': espacio_data.get('occupiedByUserId', ''),
+                'disponible': not (ocupado or reservado),
+                'ocupado': ocupado,
+                'reservado': reservado,
                 'tipo': 'vip' if es_vip else 'normal',
-                'tiempo_ocupado': espacio_data.get('formattedOccupationTime', ''),
                 'ultima_actualizacion': espacio_data.get('lastUpdated', ''),
-                'hora_ocupacion': espacio_data.get('occupationStartTime', '')
             }
             
             espacios_lista.append(espacio)
-            if not ocupado:
+            if not (ocupado or reservado):
                 espacios_disponibles += 1
-            else:
+            if ocupado:
                 vehiculos_actuales += 1
                 
             if es_vip:
@@ -118,152 +128,130 @@ def dashboard(request):
         capacidad_total = len(espacios_lista)
         ocupacion_porcentaje = round((vehiculos_actuales / capacidad_total) * 100) if capacidad_total > 0 else 0
 
-        # 2. Datos de usuarios
         usuarios_ref = realtime_db.reference('users')
         usuarios_data = usuarios_ref.get() or {}
         total_usuarios = len(usuarios_data)
         usuarios_activos = sum(1 for u in usuarios_data.values() if isinstance(u, dict) and u.get('active', False))
 
-        # 3. Datos de transacciones
-        transacciones_ref = realtime_db.reference('transactions')
+        transacciones_ref = realtime_db.reference('transacciones')
         transacciones_data = transacciones_ref.get() or {}
         
         hoy = datetime.now().date()
         ingresos_hoy = 0
+        egresos_hoy = 0
         ingresos_mes = 0
+        egresos_mes = 0
         total_transacciones = 0
+        transacciones_hoy = 0
+        transacciones_lista = []
         
         for trans_id, trans_data in transacciones_data.items():
             if not isinstance(trans_data, dict):
                 continue
                 
             try:
-                monto = float(trans_data.get('amount', 0))
-                fecha_str = trans_data.get('timestamp', '')
+                monto = float(trans_data.get('monto', trans_data.get('amount', 0)))
+                tipo = trans_data.get('tipo', 'Egreso')  # Default a Egreso si no está especificado
+                descripcion = trans_data.get('descripcion', trans_data.get('description', 'Sin descripción'))
+                rubro = trans_data.get('rubro', trans_data.get('category', 'Otros'))
+                fecha_str = trans_data.get('fecha', trans_data.get('timestamp', ''))
+                
                 if fecha_str:
-                    fecha = datetime.strptime(fecha_str, '%Y-%m-%d %H:%M:%S').date()
+                    fecha_obj = None
+                    formatos_fecha = [
+                        '%d/%m/%Y %H:%M',      
+                        '%Y-%m-%d %H:%M:%S',   
+                        '%Y-%m-%d %H:%M',      
+                        '%d/%m/%Y',            
+                        '%Y-%m-%d'            
+                    ]
                     
-                    total_transacciones += 1
-                    if fecha == hoy:
-                        ingresos_hoy += monto
-                    if fecha.month == hoy.month and fecha.year == hoy.year:
-                        ingresos_mes += monto
-            except (ValueError, TypeError):
+                    for formato in formatos_fecha:
+                        try:
+                            fecha_obj = datetime.strptime(fecha_str, formato).date()
+                            break
+                        except ValueError:
+                            continue
+                    
+                    if fecha_obj:
+                        transaccion = {
+                            'id': trans_id,
+                            'fecha': fecha_obj.strftime('%d/%m/%Y %H:%M'),
+                            'descripcion': descripcion,
+                            'rubro': rubro,
+                            'tipo': tipo,
+                            'monto': monto,
+                            'fecha_obj': fecha_obj
+                        }
+                        transacciones_lista.append(transaccion)
+                        
+                        total_transacciones += 1
+                        
+                        if fecha_obj == hoy:
+                            if tipo == 'Ingreso':
+                                ingresos_hoy += monto
+                            else:
+                                egresos_hoy += monto
+                            transacciones_hoy += 1
+                            
+                        if fecha_obj.month == hoy.month and fecha_obj.year == hoy.year:
+                            if tipo == 'Ingreso':
+                                ingresos_mes += monto
+                            else:
+                                egresos_mes += monto
+                            
+            except (ValueError, TypeError) as e:
+                print(f"Error procesando transacción {trans_id}: {e}")
                 continue
 
-        # 4. Datos de infracciones mejorados
+        transacciones_lista.sort(key=lambda x: x['fecha_obj'], reverse=True)
+
         infracciones_ref = realtime_db.reference('infractions')
         infracciones_data = infracciones_ref.get() or {}
         infracciones_hoy = 0
         total_infracciones = len(infracciones_data)
         infracciones_lista = []
         
-        # Función auxiliar para formatear timestamp
-        def formatear_fecha_infraccion(timestamp_data):
-            if not isinstance(timestamp_data, dict):
-                return 'Fecha no disponible'
-            
-            try:
-                year = timestamp_data.get('year', 0)
-                month = timestamp_data.get('month', 0)
-                day = timestamp_data.get('day', 0)
-                hours = timestamp_data.get('hours', 0)
-                minutes = timestamp_data.get('minutes', 0)
-                
-                fecha = datetime(year, month, day, hours, minutes)
-                return fecha.strftime('%d/%m/%Y %H:%M')
-            except (ValueError, TypeError):
-                return 'Fecha inválida'
-
-        def formatear_fecha_corta(timestamp_data):
-            if not isinstance(timestamp_data, dict):
-                return None
-            
-            try:
-                year = timestamp_data.get('year', 0)
-                month = timestamp_data.get('month', 0)
-                day = timestamp_data.get('day', 0)
-                
-                fecha = datetime(year, month, day)
-                return fecha.date()
-            except (ValueError, TypeError):
-                return None
-
-        # Procesar infracciones
         for inf_id, inf_data in infracciones_data.items():
             if not isinstance(inf_data, dict):
                 continue
             
-            timestamp_data = inf_data.get('timestamp', {})
-            fecha_formateada = formatear_fecha_infraccion(timestamp_data)
-            fecha_obj = formatear_fecha_corta(timestamp_data)
-            
-            # Contar infracciones de hoy
-            if fecha_obj and fecha_obj == hoy:
-                infracciones_hoy += 1
-            
-            # Agregar a la lista para mostrar
             infraccion = {
                 'id': inf_id,
-                'infraction_id': inf_data.get('infractionId', inf_id),
                 'descripcion': inf_data.get('description', 'Sin descripción'),
                 'tipo': inf_data.get('infractionType', 'Desconocido'),
-                'usuario_id': inf_data.get('userId', 'No identificado'),
-                'session_id': inf_data.get('sessionId', 'Sin sesión'),
                 'multa': inf_data.get('fine', 0),
                 'estado': inf_data.get('status', 'pending'),
-                'fecha_completa': fecha_formateada,
-                'fecha_obj': fecha_obj
             }
-            
             infracciones_lista.append(infraccion)
 
-        # Ordenar infracciones por fecha (más recientes primero)
-        infracciones_lista.sort(key=lambda x: x['fecha_obj'] or datetime.min.date(), reverse=True)
+        infracciones_lista.sort(key=lambda x: x['id'], reverse=True)
 
-        # 5. Datos de vehículos
-        vehiculos_ref = realtime_db.reference('vehicles')
-        vehiculos_data = vehiculos_ref.get() or {}
-        total_vehiculos = len(vehiculos_data)
-        vehiculos_registrados_hoy = sum(
-            1 for v in vehiculos_data.values() 
-            if isinstance(v, dict) and 
-            v.get('registrationDate', '').startswith(hoy.strftime('%Y-%m-%d'))
-        )
-
-        # Preparar contexto
         context = {
-            # Espacios
-            'espacios': espacios_lista[:8],  # Mostrar solo 8 para el preview
+            'espacios': espacios_lista[:8],
             'espacios_disponibles': espacios_disponibles,
             'vehiculos_actuales': vehiculos_actuales,
             'capacidad_total': capacidad_total,
             'ocupacion_porcentaje': ocupacion_porcentaje,
             'espacios_vip': espacios_vip,
             
-            # Usuarios
             'total_usuarios': total_usuarios,
             'usuarios_activos': usuarios_activos,
-            'usuarios_nuevos_hoy': 0,  # Puedes agregar esta métrica
             
-            # Transacciones
+            'transacciones': transacciones_lista[:10],  # Mostrar solo las 10 más recientes
             'ingresos_hoy': round(ingresos_hoy, 2),
+            'egresos_hoy': round(egresos_hoy, 2),
             'ingresos_mes': round(ingresos_mes, 2),
+            'egresos_mes': round(egresos_mes, 2),
+            'balance_hoy': round(ingresos_hoy - egresos_hoy, 2),
+            'balance_mes': round(ingresos_mes - egresos_mes, 2),
             'total_transacciones': total_transacciones,
-            'transacciones_hoy': sum(1 for t in transacciones_data.values() 
-                                   if isinstance(t, dict) and 
-                                   t.get('timestamp', '').startswith(hoy.strftime('%Y-%m-%d'))),
+            'transacciones_hoy': transacciones_hoy,
             
-            # Infracciones - datos reales
             'infracciones_hoy': infracciones_hoy,
             'total_infracciones': total_infracciones,
-            'infracciones_lista': infracciones_lista[:5],  # Mostrar solo las 5 más recientes
+            'infracciones_lista': infracciones_lista[:5],
             
-            # Vehículos
-            'total_vehiculos': total_vehiculos,
-            'vehiculos_registrados_hoy': vehiculos_registrados_hoy,
-            
-            # General
             'ultima_actualizacion': datetime.now().strftime('%d/%m/%Y %H:%M')
         }
         
@@ -276,10 +264,10 @@ def dashboard(request):
             'espacios': [],
             'total_usuarios': 0,
             'ingresos_hoy': 0,
+            'egresos_hoy': 0,
             'infracciones_hoy': 0,
             'total_infracciones': 0,
-            'infracciones_lista': [],
-            'total_vehiculos': 0
+            'infracciones_lista': []
         })
 
 ################################################### lOGIN ########################################################
@@ -301,25 +289,21 @@ class LoginView(View):
         next_url = request.POST.get('next', '/')
         
         try:
-            users_ref = realtime_db.reference('users')  # Cambié a 'users' (mejor práctica)
+            users_ref = realtime_db.reference('users')
             all_users = users_ref.get()
-            
-            # Si no existe el nodo o está vacío, lo creamos con el usuario admin
             if not all_users:
                 admin_user = {
                     'admin': {
                         'username': 'admin',
-                        'password': 'admin123',  # En producción usa hash!
+                        'password': 'admin123', 
                         'email': 'admin@ues.edu.sv',
                         'role': 'admin'
                     }
                 }
                 users_ref.set(admin_user)
-                all_users = admin_user  # Usamos los datos recién creados
-            
-            # Si existe pero es string (error), lo convertimos a diccionario
+                all_users = admin_user 
             elif isinstance(all_users, str):
-                users_ref.set({})  # Creamos estructura vacía
+                users_ref.set({})
                 all_users = {}
             
             user_data = None
@@ -356,188 +340,13 @@ class LoginView(View):
                 'next': next_url
             })
 
+################################################## FUNCION PARA MOSTRAR LOS CERRAR SECCION #############################################
 def logout_view(request):
     if 'firebase_user' in request.session:
         del request.session['firebase_user']
     return redirect('login')
 
-def listar_registros(request):
-    # Obtener datos de Firebase Realtime Database
-    if not FIREBASE_ENABLED:
-        return render(request, 'registros_vehiculos.html', {
-            'error': 'Firebase no está configurado correctamente',
-            'registros': {
-                'object_list': [],
-                'paginator': {'num_pages': 0, 'count': 0},
-                'has_previous': False,
-                'has_next': False,
-                'previous_page_number': 1,
-                'next_page_number': 1,
-                'start_index': 0,
-                'end_index': 0,
-            }
-        })
-
-    try:
-        # Obtener datos del nodo /paking
-        paking_ref = db.reference('paking')
-        paking_data = paking_ref.get() or {}
-
-        registros = []
-        for espacio_id, espacio_data in paking_data.items():
-            if not isinstance(espacio_data, dict):
-                continue
-                
-            # Solo procesar espacios ocupados
-            if espacio_data.get('disponible', True) == False and 'placa' in espacio_data:
-                hora_entrada = espacio_data.get('hora_ocupacion')
-                hora_salida = espacio_data.get('hora_salida')
-                
-                # Calcular tiempo transcurrido o estacionado
-                tiempo_info = ''
-                if hora_entrada:
-                    try:
-                        entrada_dt = datetime.strptime(hora_entrada, '%Y-%m-%d %H:%M:%S')
-                        if hora_salida:
-                            salida_dt = datetime.strptime(hora_salida, '%Y-%m-%d %H:%M:%S')
-                            delta = salida_dt - entrada_dt
-                            horas = delta.seconds // 3600
-                            minutos = (delta.seconds % 3600) // 60
-                            tiempo_info = f'{horas} horas {minutos} minutos'
-                        else:
-                            delta = datetime.now() - entrada_dt
-                            horas = delta.seconds // 3600
-                            minutos = (delta.seconds % 3600) // 60
-                            tiempo_info = f'{horas} horas {minutos} minutos'
-                    except:
-                        tiempo_info = 'No disponible'
-
-                registros.append({
-                    'id': espacio_id,
-                    'placa': espacio_data.get('placa', ''),
-                    'tipo_vehiculo': espacio_data.get('tipo_vehiculo', 'No Residente'),
-                    'espacio': {'numero': espacio_data.get('numero', '')},
-                    'hora_entrada': hora_entrada,
-                    'hora_salida': hora_salida,
-                    'tarifa': espacio_data.get('tarifa'),
-                    'tiempo_transcurrido': tiempo_info if not hora_salida else '',
-                    'tiempo_estacionado': tiempo_info if hora_salida else ''
-                })
-
-        # Aplicar filtros
-        placa = request.GET.get('placa', '')
-        estado = request.GET.get('estado', 'todos')
-        
-        registros_filtrados = registros
-        
-        if placa:
-            registros_filtrados = [r for r in registros_filtrados if placa.lower() in r['placa'].lower()]
-        
-        if estado == 'activos':
-            registros_filtrados = [r for r in registros_filtrados if not r['hora_salida']]
-        elif estado == 'finalizados':
-            registros_filtrados = [r for r in registros_filtrados if r['hora_salida']]
-
-        # Paginación
-        page = int(request.GET.get('page', 1))
-        items_per_page = 3
-        total_items = len(registros_filtrados)
-        total_pages = (total_items + items_per_page - 1) // items_per_page
-        
-        start_idx = (page - 1) * items_per_page
-        end_idx = start_idx + items_per_page
-        registros_paginados = registros_filtrados[start_idx:end_idx]
-
-        # Calcular información de paginación
-        has_previous = page > 1
-        has_next = page < total_pages
-        previous_page = page - 1 if has_previous else 1
-        next_page = page + 1 if has_next else total_pages
-
-        # Calcular totales para el resumen
-        totales = {
-            'registros': len(registros),
-            'activos': len([r for r in registros if not r['hora_salida']]),
-            'finalizados': len([r for r in registros if r['hora_salida']]),
-            'recaudado': sum([r['tarifa'] for r in registros if r['tarifa'] is not None])
-        }
-
-        context = {
-            'registros': {
-                'object_list': registros_paginados,
-                'number': page,
-                'paginator': {
-                    'num_pages': total_pages,
-                    'count': total_items
-                },
-                'has_previous': has_previous,
-                'has_next': has_next,
-                'previous_page_number': previous_page,
-                'next_page_number': next_page,
-                'start_index': start_idx + 1,
-                'end_index': min(end_idx, total_items),
-            },
-            'totales': totales,
-            'request': request
-        }
-
-        return render(request, 'registros_vehiculos.html', context)
-
-    except Exception as e:
-        return render(request, 'registros_vehiculos.html', {
-            'error': f'Error al obtener datos: {str(e)}',
-            'registros': {
-                'object_list': [],
-                'paginator': {'num_pages': 0, 'count': 0},
-                'has_previous': False,
-                'has_next': False,
-                'previous_page_number': 1,
-                'next_page_number': 1,
-                'start_index': 0,
-                'end_index': 0,
-            },
-            'totales': {
-                'registros': 0,
-                'activos': 0,
-                'finalizados': 0,
-                'recaudado': 0
-            }
-        })
-
-def detalle_registro(request, registro_id):
-    # Datos de ejemplo - normalmente esto vendría de la base de datos
-    registros_ejemplo = [
-        {
-            'id': 1,
-            'placa': 'ABC-123',
-            'tipo_vehiculo': 'Residente',
-            'espacio': {'numero': 'A-12', 'tipo': 'Público'},
-            'hora_entrada': datetime.now() - timedelta(hours=2),
-            'hora_salida': None,
-            'tarifa': None,
-            'tiempo_transcurrido': '2 horas 15 minutos',
-            'conductor': 'Juan Pérez',
-            'telefono': '555-1234',
-            'observaciones': 'Vehículo corporativo'
-        },
-        # ... otros registros de ejemplo
-    ]
-    
-    registro = next((r for r in registros_ejemplo if r['id'] == int(registro_id)), None)
-    
-    if not registro:
-        from django.http import Http404
-        raise Http404("Registro no encontrado")
-    
-    context = {
-        'registro': registro
-    }
-    
-    return render(request, 'detalle_registro.html', context)
-
-from datetime import datetime
-import json
-
+################################################## FUNCION AUXILIAR PARA FORMATEAR LAS FECHAS #############################################
 def formatear_timestamp(timestamp_data):
     """
     Convierte el objeto timestamp de Firebase a formato legible
@@ -546,20 +355,15 @@ def formatear_timestamp(timestamp_data):
         return "-"
     
     try:
-        # Si es un string JSON, parsearlo
         if isinstance(timestamp_data, str):
             timestamp_data = json.loads(timestamp_data)
         
-        # Si es un diccionario con la estructura de Firebase timestamp
         if isinstance(timestamp_data, dict):
-            # Obtener el timestamp en segundos
             seconds = timestamp_data.get('_seconds', 0)
             if not seconds:
-                # Intentar con la estructura alternativa
                 seconds = timestamp_data.get('seconds', 0)
             
             if seconds:
-                # Convertir a datetime
                 dt = datetime.fromtimestamp(seconds)
                 return dt.strftime('%d/%m/%Y %H:%M:%S')
         
@@ -568,6 +372,7 @@ def formatear_timestamp(timestamp_data):
         print(f"Error formateando timestamp: {e}")
         return "-"
 
+################################################## FUNCION AUXILIAR GESTION DE PARQUEOS #############################################
 def calcular_tiempo_ocupacion(inicio_timestamp):
     """
     Calcula el tiempo transcurrido desde que se ocupó el espacio
@@ -576,7 +381,6 @@ def calcular_tiempo_ocupacion(inicio_timestamp):
         return "-"
     
     try:
-        # Si es un string JSON, parsearlo
         if isinstance(inicio_timestamp, str):
             inicio_timestamp = json.loads(inicio_timestamp)
         
@@ -588,7 +392,6 @@ def calcular_tiempo_ocupacion(inicio_timestamp):
                 ahora = datetime.now()
                 diferencia = ahora - inicio
                 
-                # Formatear la diferencia
                 horas = diferencia.seconds // 3600
                 minutos = (diferencia.seconds % 3600) // 60
                 
@@ -604,6 +407,7 @@ def calcular_tiempo_ocupacion(inicio_timestamp):
         print(f"Error calculando tiempo de ocupación: {e}")
         return "-"
 
+################################################## FUNCION PARA GESTION DE PARQUEOS #############################################
 def gestion_espacios(request):
     """
     Vista para gestionar espacios de parqueo (4 normales y 4 VIP)
@@ -625,20 +429,16 @@ def gestion_espacios(request):
         for espacio_id, espacio_data in espacios_data.items():
             if not isinstance(espacio_data, dict):
                 continue
-            
-            # Determinar tipo basado en el ID o la sección
+
             tipo = 'privado' if espacio_data.get('section') == 'vip' else 'publico'
-            
-            # Obtener número del espacio (último carácter del ID)
+
             numero = espacio_id.split('_')[-1]
-            
-            # Formatear los timestamps
+
             hora_ocupacion_raw = espacio_data.get('occupationStartTime')
             ultima_actualizacion_raw = espacio_data.get('lastUpdated')
             
-            # Calcular tiempo de ocupación si está ocupado
             tiempo_ocupacion = "-"
-            if not espacio_data.get('occupied', False) == False:  # Si está ocupado
+            if not espacio_data.get('occupied', False) == False: 
                 tiempo_ocupacion = calcular_tiempo_ocupacion(hora_ocupacion_raw)
             
             espacios_lista.append({
@@ -646,7 +446,7 @@ def gestion_espacios(request):
                 'numero': numero,
                 'tipo': tipo,
                 'disponible': not espacio_data.get('occupied', False),
-                'placa': espacio_data.get('licensePlate', ''),  # Incluir placa si está disponible
+                'placa': espacio_data.get('licensePlate', ''), 
                 'hora_ocupacion': formatear_timestamp(hora_ocupacion_raw),
                 'ultima_actualizacion': formatear_timestamp(ultima_actualizacion_raw),
                 'ocupado_por': espacio_data.get('occupiedByUserId', ''),
@@ -654,15 +454,12 @@ def gestion_espacios(request):
                 'reservado': espacio_data.get('reserved', False)
             })
         
-        # Ordenar espacios por tipo y número
         espacios_lista.sort(key=lambda x: (x['tipo'], int(x['numero']) if x['numero'].isdigit() else 0))
         
-        # Estadísticas adicionales
         total_espacios = len(espacios_lista)
         espacios_ocupados = len([e for e in espacios_lista if not e['disponible']])
         espacios_disponibles = total_espacios - espacios_ocupados
-        
-        # Calcular porcentaje de ocupación
+
         porcentaje_ocupacion = 0
         if total_espacios > 0:
             porcentaje_ocupacion = round((espacios_ocupados / total_espacios) * 100)
@@ -685,6 +482,7 @@ def gestion_espacios(request):
             'espacios': []
         })
 
+################################################## FUNCION PARA MOSTRAR LOS USUARIOS #############################################
 def listar_usuarios(request):
     if not FIREBASE_ENABLED:
         return render(request, 'Usuarios.html', {
@@ -704,26 +502,24 @@ def listar_usuarios(request):
         for user_id, user_data in all_users.items():
             if not isinstance(user_data, dict):
                 continue
-                
-            # Mapear los campos según la estructura de Firebase
+
             usuario = {
-                'id': user_data.get('userId', user_id),  # Usar userId como ID principal
-                'username': user_data.get('name', ''),  # 'name' es el nombre de usuario
+                'id': user_data.get('userId', user_id), 
+                'username': user_data.get('name', ''),
                 'nombre_completo': f"{user_data.get('name', '')} {user_data.get('apellido', '')}".strip(),
                 'email': user_data.get('email', ''),
-                'rol': user_data.get('role', 'cliente'),  # Mapear role a rol
-                'activo': user_data.get('active', True),  # Mapear active a activo
-                'foto_perfil': user_data.get('profileImage'),  # Agregar foto de perfil si existe
+                'rol': user_data.get('role', 'cliente'),
+                'activo': user_data.get('active', True),  
+                'foto_perfil': user_data.get('profileImage'),  
                 'telefono': user_data.get('telefono', user_data.get('phone', '')),
                 'plan_type': user_data.get('planType', 'none'),
-                'user_firebase_id': user_id,  # Guardar el ID de Firebase
-                'ultimo_login': datetime.now()  # Valor por defecto
+                'user_firebase_id': user_id,
+                'ultimo_login': datetime.now()
             }
             
-            # Procesar fecha de creación si existe
+
             if 'createdAt' in user_data and user_data['createdAt']:
                 try:
-                    # Convertir timestamp de Firebase a datetime
                     if isinstance(user_data['createdAt'], (int, float)):
                         usuario['fecha_registro'] = datetime.fromtimestamp(user_data['createdAt'] / 1000)
                     elif isinstance(user_data['createdAt'], str):
@@ -734,8 +530,6 @@ def listar_usuarios(request):
                     usuario['fecha_registro'] = datetime.now()
             else:
                 usuario['fecha_registro'] = datetime.now()
-            
-            # Procesar último login si existe
             if 'lastLogin' in user_data and user_data['lastLogin']:
                 try:
                     if isinstance(user_data['lastLogin'], (int, float)):
@@ -747,7 +541,6 @@ def listar_usuarios(request):
                     
             usuarios_lista.append(usuario)
 
-        # Aplicar filtros
         busqueda = request.GET.get('busqueda', '').lower()
         rol = request.GET.get('rol', 'todos')
         estado = request.GET.get('estado', 'todos')
@@ -768,7 +561,6 @@ def listar_usuarios(request):
         if estado != 'todos':
             usuarios_filtrados = [u for u in usuarios_filtrados if u['activo'] == (estado == 'activos')]
 
-        # Paginación
         page = int(request.GET.get('page', 1))
         items_per_page = 10
         total_items = len(usuarios_filtrados)
@@ -778,10 +570,8 @@ def listar_usuarios(request):
         end_idx = start_idx + items_per_page
         usuarios_paginados = usuarios_filtrados[start_idx:end_idx]
 
-        # Obtener roles únicos
         roles_disponibles = sorted(list({u['rol'].capitalize() for u in usuarios_lista if u['rol']}))
 
-        # Calcular estadísticas
         stats = {
             'total': len(usuarios_lista),
             'activos': len([u for u in usuarios_lista if u['activo']]),
@@ -813,7 +603,7 @@ def listar_usuarios(request):
                 'rol': rol,
                 'estado': estado
             },
-            'modo_offline': False  # Agregar indicador de modo offline
+            'modo_offline': False 
         }
 
         return render(request, 'Usuarios.html', context)
@@ -839,7 +629,7 @@ def listar_usuarios(request):
             'modo_offline': True
         })
 
-
+################################################## FUNCION PARA MOSTRAR LOS DETALES DE USUARIOS #############################################
 def detalle_usuario(request, user_id):
     if not FIREBASE_ENABLED:
         return render(request, 'Detalles_Usuarios.html', {
@@ -903,8 +693,7 @@ def detalle_usuario(request, user_id):
             'usuario': None
         })
 
-
-# Función adicional para verificar conectividad (para el template)
+########################## Función adicional para verificar conectividad (para el template) ##########################################
 def check_connectivity(request):
     """Endpoint para verificar conectividad con Firebase"""
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
@@ -917,8 +706,7 @@ def check_connectivity(request):
             return JsonResponse({'online': False})
     return JsonResponse({'online': False})
 
-
-# Función adicional para sincronización manual
+################################### Función adicional para sincronización manual ######################################################
 def sync_users(request):
     """Endpoint para sincronización manual de usuarios"""
     if request.method == 'POST' and request.headers.get('X-Requested-With') == 'XMLHttpRequest':
@@ -939,41 +727,23 @@ def sync_users(request):
             })
     
     return JsonResponse({'success': False, 'message': 'Método no permitido'})
- 
- 
-from django.views import View
-from django.shortcuts import render
-from django.http import HttpResponse, JsonResponse
-from django.template.loader import get_template
-from datetime import datetime
-import xlsxwriter
-from io import BytesIO
-from xhtml2pdf import pisa
-import json
 
+################################################## Funcion para generar reportes ######################################################
 class ReportesRTDBView(View):
     template_name = 'Reportes.html'
     
     def get(self, request):
-        # Obtener parámetros del reporte
         tipo_reporte = request.GET.get('tipo_reporte', 'users')
         formato = request.GET.get('formato', 'html')
-        
-        # Obtener datos de Firebase RTDB
         raw_data = self.get_rtdb_data(tipo_reporte)
-        
-        # Procesar y formatear los datos
         processed_data = self.process_data(raw_data, tipo_reporte)
         
-        # Manejar diferentes formatos de salida
         if formato == 'pdf':
             return self.generar_pdf(processed_data, tipo_reporte)
         elif formato == 'excel':
             return self.generar_excel(processed_data, tipo_reporte)
         elif formato == 'json':
             return JsonResponse(processed_data, safe=False, json_dumps_params={'indent': 2})
-        
-        # Si es HTML, renderizar la plantilla normal
         context = {
             'titulo': self.get_titulo_reporte(tipo_reporte),
             'tipo_reporte': tipo_reporte,
@@ -991,8 +761,6 @@ class ReportesRTDBView(View):
         
         ref = db.reference(tipo_reporte)
         snapshot = ref.get()
-        
-        # Convertir a lista de diccionarios si es necesario
         if isinstance(snapshot, dict):
             return [{'id': key, **value} for key, value in snapshot.items()]
         return snapshot or []
@@ -1006,8 +774,6 @@ class ReportesRTDBView(View):
         
         for item in raw_data:
             processed_item = {}
-            
-            # Procesar cada campo según el tipo de reporte
             if tipo_reporte == 'users':
                 processed_item = self.process_user_data(item)
             elif tipo_reporte == 'user_memberships':
@@ -1039,26 +805,33 @@ class ReportesRTDBView(View):
     
     def process_membership_data(self, item):
         """Procesa datos de membresías"""
+        plan_id = item.get('planId', '-')
+        price = self.get_plan_price(plan_id)
+        
         return {
-            'ID': item.get('id', '-'),
-            'Usuario': item.get('user_name', item.get('user_id', '-')),
-            'Plan': item.get('plan_name', '-'),
-            'Estado': self.format_membership_status(item.get('status')),
-            'Fecha Inicio': self.format_date(item.get('start_date')),
-            'Fecha Fin': self.format_date(item.get('end_date')),
-            'Precio': self.format_currency(item.get('price')),
+            'ID': item.get('membershipId', item.get('id', '-')),
+            'Usuario': item.get('userId', '-'),
+            'Plan': item.get('planId', '-'),
+            'Estado': self.format_membership_status(item.get('active')),
+            'Precio': self.format_currency(price),
+            'Método de Pago': item.get('paymentMethod', '-'),
+            'Transacción': item.get('transactionId', '-'),
+            'Fecha Inicio': self.format_timestamp_date(item.get('startDate')),
+            'Fecha Fin': self.format_timestamp_date(item.get('endDate')),
+            'Zona Horaria': f"UTC{item.get('timezoneOffset', 0)/60:+.0f}" if item.get('timezoneOffset') else '-',
         }
     
     def process_parking_data(self, item):
         """Procesa datos de espacios de estacionamiento"""
         return {
-            'ID': item.get('id', '-'),
-            'Número': item.get('number', '-'),
-            'Zona': item.get('zone', '-'),
-            'Estado': self.format_parking_status(item.get('status')),
-            'Tipo': item.get('type', '-'),
+            'ID': item.get('spaceId', item.get('id', '-')),
+            'Número': item.get('spaceNumber', '-'),
+            'Zona': item.get('section', '-'),
+            'Estado': self.format_parking_status(item.get('occupied')),
+            'Reservado': 'Sí' if item.get('reserved', False) else 'No',
+            'Tiempo Actual': self.format_duration(item.get('currentOccupationDuration', 0)),  # Tiempo parqueado
             'Ocupado por': item.get('occupied_by', '-'),
-            'Última Actualización': self.format_date(item.get('updated_at')),
+            'Última Actualización': self.format_date(item.get('lastUpdated')),  # Usar lastUpdated
         }
     
     def process_plan_data(self, item):
@@ -1068,7 +841,7 @@ class ReportesRTDBView(View):
             'Nombre': item.get('name', '-'),
             'Descripción': item.get('description', '-'),
             'Precio': self.format_currency(item.get('price')),
-            'Duración': f"{item.get('duration', 0)} días",
+            'Duración': f"{item.get('durationDays', 0)} días",
             'Activo': 'Sí' if item.get('active', False) else 'No',
             'Beneficios': self.format_list(item.get('benefits', [])),
         }
@@ -1078,21 +851,17 @@ class ReportesRTDBView(View):
         return {
             'ID': item.get('id', '-'),
             'Usuario': item.get('user_name', item.get('user_id', '-')),
-            'Tipo': item.get('type', '-'),
+            'Tipo': item.get('infactionType', '-'),
             'Descripción': item.get('description', '-'),
-            'Multa': self.format_currency(item.get('fine_amount')),
+            'Multa': self.format_currency(item.get('fine')),
             'Estado': self.format_infraction_status(item.get('status')),
-            'Fecha': self.format_date(item.get('created_at')),
         }
     
     def process_generic_data(self, item):
         """Procesa datos genéricos"""
         processed = {}
         for key, value in item.items():
-            # Formatear claves
             formatted_key = key.replace('_', ' ').title()
-            
-            # Formatear valores
             if isinstance(value, bool):
                 processed[formatted_key] = 'Sí' if value else 'No'
             elif isinstance(value, list):
@@ -1115,7 +884,6 @@ class ReportesRTDBView(View):
         
         try:
             if isinstance(date_value, str):
-                # Intentar diferentes formatos de fecha
                 for fmt in ['%Y-%m-%d', '%Y-%m-%dT%H:%M:%S', '%Y-%m-%d %H:%M:%S']:
                     try:
                         dt = datetime.strptime(date_value, fmt)
@@ -1161,15 +929,47 @@ class ReportesRTDBView(View):
         }
         return status_map.get(status, status or '-')
     
-    def format_parking_status(self, status):
-        """Formatea estado de estacionamiento"""
-        status_map = {
-            'available': 'Disponible',
-            'occupied': 'Ocupado',
-            'reserved': 'Reservado',
-            'maintenance': 'Mantenimiento',
+    def format_membership_status(self, active):
+        """Convierte el estado booleano de membresía a texto"""
+        if active is None:
+            return 'Desconocido'
+        return 'Activa' if active else 'Inactiva'
+
+    def format_timestamp_date(self, timestamp_obj):
+        """Formatea objeto de timestamp a fecha legible"""
+        if not timestamp_obj or not isinstance(timestamp_obj, dict):
+            return '-'
+        
+        try:
+            # Extraer componentes del timestamp
+            year = timestamp_obj.get('year', 0)
+            month = timestamp_obj.get('month', 0)
+            day = timestamp_obj.get('day', 0)
+            hours = timestamp_obj.get('hours', 0)
+            minutes = timestamp_obj.get('minutes', 0)
+            
+            if year and month and day:
+                return f"{day:02d}/{month:02d}/{year} {hours:02d}:{minutes:02d}"
+            return '-'
+        except:
+            return '-'
+
+    def format_payment_method(self, method):
+        """Formatea método de pago"""
+        methods = {
+            'credit_card': 'Tarjeta de Crédito',
+            'debit_card': 'Tarjeta de Débito',
+            'paypal': 'PayPal',
+            'bank_transfer': 'Transferencia',
+            'cash': 'Efectivo'
         }
-        return status_map.get(status, status or '-')
+        return methods.get(method, method or '-')
+    
+    def format_parking_status(self, occupied):
+        """Convierte el estado booleano a texto legible"""
+        if occupied is None:
+            return 'Desconocido'
+        return 'Ocupado' if occupied else 'Libre'
     
     def format_infraction_status(self, status):
         """Formatea estado de infracción"""
@@ -1180,6 +980,34 @@ class ReportesRTDBView(View):
             'overdue': 'Vencida',
         }
         return status_map.get(status, status or '-')
+    
+    def format_duration(self, duration_minutes):
+        """Convierte minutos a formato legible"""
+        if not duration_minutes or duration_minutes == 0:
+            return '0m'
+        
+        hours = duration_minutes // 60
+        minutes = duration_minutes % 60
+        
+        if hours > 0:
+            return f'{hours}h {minutes}m'
+        return f'{minutes}m'
+    
+    def get_plan_price(self, plan_id):
+        """Obtiene el precio según el tipo de plan"""
+        prices = {
+            'plan_silver': 20,
+            'plan_gold': 30,
+            'silver': 20, 
+            'gold': 30,
+        }
+        return prices.get(plan_id, 0) 
+
+    def format_currency(self, amount):
+        """Formatea cantidad a moneda"""
+        if amount is None or amount == 0:
+            return '-'
+        return f"${amount:.2f}"
     
     def get_titulo_reporte(self, tipo_reporte):
         """Obtiene el título del reporte"""
@@ -1196,10 +1024,10 @@ class ReportesRTDBView(View):
         """Obtiene los encabezados para el tipo de reporte"""
         headers_map = {
             'users': ['ID', 'Nombre', 'Email', 'Teléfono', 'Estado'],
-            'user_memberships': ['ID', 'Usuario', 'Plan', 'Estado', 'Fecha Inicio', 'Fecha Fin', 'Precio'],
+            'user_memberships': ['ID', 'Usuario', 'Plan', 'Estado', 'Precio','Método de Pago', 'Transacción', 'Fecha Inicio', 'Fecha Fin', 'Zona Horaria'],
             'parking_spaces': ['ID', 'Número', 'Zona', 'Estado', 'Tipo', 'Ocupado por', 'Última Actualización'],
             'membership_plans': ['ID', 'Nombre', 'Descripción', 'Precio', 'Duración', 'Activo', 'Beneficios'],
-            'infractions': ['ID', 'Usuario', 'Tipo', 'Descripción', 'Multa', 'Estado', 'Fecha'],
+            'infractions': ['ID', 'Usuario', 'Tipo', 'Descripción', 'Multa', 'Estado'],
         }
         return headers_map.get(tipo_reporte, [])
     
@@ -1331,6 +1159,7 @@ class ReportesRTDBView(View):
         
         return response
 
+################################################## FUNCION PARA NUEVO USUARIO ##################################################
 class GestionUsuarioView(View):
     template_name = 'formulario_usuario.html'
     
@@ -1342,7 +1171,6 @@ class GestionUsuarioView(View):
         
         context = {'roles': ['admin', 'gerente', 'operador', 'client']}
         
-        # Modo edición
         if username:
             try:
                 user_data = self._obtener_usuario_por_username(username)
@@ -1365,8 +1193,6 @@ class GestionUsuarioView(View):
         if not FIREBASE_ENABLED:
             messages.error(request, 'Firebase no está configurado')
             return redirect('listar_usuarios')
-        
-        # Obtener datos del formulario
         form_data = {
             'username': request.POST.get('username'),
             'nombre_completo': request.POST.get('nombre_completo'),
@@ -1379,40 +1205,33 @@ class GestionUsuarioView(View):
             'notas': request.POST.get('notas')
         }
         
-        # Validación básica
         if not form_data['username']:
             messages.error(request, 'El nombre de usuario es requerido')
             return self._render_con_errores(request, form_data, username)
         
         try:
             users_ref = realtime_db.reference('users')
-            
-            # En edición, verificar que el usuario exista
             if username:
                 user_ref = self._obtener_ref_usuario(username)
                 if not user_ref.get():
                     messages.error(request, 'Usuario no encontrado')
                     return redirect('listar_usuarios')
                 
-                # Actualizar datos
                 user_ref.update(form_data)
                 messages.success(request, 'Usuario actualizado correctamente')
                 return redirect('detalle_usuario', username=form_data['username'])
             
-            # En creación, verificar que no exista
             else:
                 if self._existe_usuario(form_data['username']):
                     messages.error(request, 'El nombre de usuario ya existe')
                     return self._render_con_errores(request, form_data)
                 
-                # Crear nuevo usuario
                 nuevo_usuario = {
                     **form_data,
                     'fecha_registro': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                     'ultimo_login': None
                 }
                 
-                # Usamos el username como key en Firebase
                 users_ref.child(form_data['username']).set(nuevo_usuario)
                 messages.success(request, 'Usuario creado correctamente')
                 return redirect('detalle_usuario', username=form_data['username'])
@@ -1467,21 +1286,16 @@ class GestionUsuarioView(View):
         }
         return render(request, self.template_name, context)
 
+################################################## FUNCION PARA MOSTRAR PERFIL DE ADMIN ##############################################
 def perfil_admin(request):
-    # Verificación manual de autenticación
     if not request.user.is_authenticated:
         messages.error(request, 'Debes iniciar sesión para acceder a esta página')
-        return redirect('login')  # Asegúrate que 'login' sea el nombre de tu URL de login
+        return redirect('login')
     
     try:
-        # Obtener datos de Firebase RTDB
         user_ref = db.reference(f'usuarios/{request.user.username}')
         user_data = user_ref.get() or {}
-        
-        # Obtener datos de autenticación de Firebase
         firebase_user = auth.get_user(request.user.uid)
-        
-        # Combinar datos para el template
         profile_data = {
             'username': request.user.username,
             'email': firebase_user.email,
@@ -1492,17 +1306,12 @@ def perfil_admin(request):
         }
 
         if request.method == 'POST':
-            # Procesar actualización
             updated_data = {
                 'nombre': request.POST.get('nombre', '').strip(),
                 'apellido': request.POST.get('apellido', '').strip(),
                 'actualizado_en': datetime.datetime.now().isoformat()
             }
-
-            # Actualizar en RTDB
             user_ref.update(updated_data)
-            
-            # Actualizar en Authentication (email)
             if 'email' in request.POST and request.POST['email'] != firebase_user.email:
                 auth.update_user(
                     request.user.uid,
@@ -1524,3 +1333,288 @@ def perfil_admin(request):
     except Exception as e:
         messages.error(request, f'Error al actualizar el perfil: {str(e)}')
         return redirect('perfil_admin')
+
+######################################### FUNCION PARA MOSTRAR EL HISTORIAL DE ASIHNACIONES  #########################################
+def historial_movimientos(request):
+    """
+    Vista para mostrar el historial de movimientos de asignaciones de parqueo
+    """
+    try:
+        ref = db.reference('historial_asignaciones')
+        historial_data = ref.get()
+        
+        if not historial_data:
+            historial_lista = []
+        else:
+            historial_lista = []
+            for key, value in historial_data.items():
+                registro = value.copy()
+                registro['id'] = key
+                if 'timestamp' in registro and registro['timestamp']:
+                    try:
+                        fecha_dt = datetime.fromtimestamp(registro['timestamp'])
+                        registro['fecha_formateada'] = fecha_dt.strftime('%Y-%m-%d %H:%M:%S')
+                    except:
+                        registro['fecha_formateada'] = registro.get('fecha', 'Sin fecha')
+                else:
+                    registro['fecha_formateada'] = registro.get('fecha', 'Sin fecha')
+                
+                historial_lista.append(registro)
+            historial_lista.sort(key=lambda x: x.get('timestamp', 0), reverse=True)
+        
+        fecha_inicio = request.GET.get('fecha_inicio')
+        fecha_fin = request.GET.get('fecha_fin')
+        accion_filtro = request.GET.get('accion')
+        espacio_filtro = request.GET.get('espacio')
+        buscar = request.GET.get('buscar', '').strip()
+
+        historial_filtrado = historial_lista.copy()
+        
+        if fecha_inicio:
+            try:
+                fecha_inicio_dt = datetime.strptime(fecha_inicio, '%Y-%m-%d')
+                historial_filtrado = [
+                    item for item in historial_filtrado 
+                    if 'timestamp' in item and item['timestamp'] and
+                    datetime.fromtimestamp(item['timestamp']).date() >= fecha_inicio_dt.date()
+                ]
+            except:
+                pass
+        
+        if fecha_fin:
+            try:
+                fecha_fin_dt = datetime.strptime(fecha_fin, '%Y-%m-%d')
+                historial_filtrado = [
+                    item for item in historial_filtrado 
+                    if 'timestamp' in item and item['timestamp'] and
+                    datetime.fromtimestamp(item['timestamp']).date() <= fecha_fin_dt.date()
+                ]
+            except:
+                pass
+        
+        if accion_filtro:
+            historial_filtrado = [
+                item for item in historial_filtrado 
+                if item.get('accion', '') == accion_filtro
+            ]
+        
+        if espacio_filtro:
+            historial_filtrado = [
+                item for item in historial_filtrado 
+                if item.get('espacio_key', '') == espacio_filtro
+            ]
+        
+        if buscar:
+            historial_filtrado = [
+                item for item in historial_filtrado 
+                if buscar.lower() in str(item.get('accion', '')).lower() or
+                   buscar.lower() in str(item.get('espacio_key', '')).lower() or
+                   buscar.lower() in str(item.get('numero_parqueo', '')).lower() or
+                   buscar.lower() in str(item.get('user_id', '')).lower()
+            ]
+        
+        paginator = Paginator(historial_filtrado, 10)
+        page_number = request.GET.get('page')
+        page_obj = paginator.get_page(page_number)
+        
+        acciones_unicas = list(set([item.get('accion', '') for item in historial_lista if item.get('accion')]))
+        espacios_unicos = list(set([item.get('espacio_key', '') for item in historial_lista if item.get('espacio_key')]))
+        
+        context = {
+            'historial': page_obj,
+            'acciones_unicas': acciones_unicas,
+            'espacios_unicos': espacios_unicos,
+            'filtros': {
+                'fecha_inicio': fecha_inicio,
+                'fecha_fin': fecha_fin,
+                'accion': accion_filtro,
+                'espacio': espacio_filtro,
+                'buscar': buscar,
+            },
+            'total_registros': len(historial_filtrado)
+        }
+        
+        return render(request, 'historial_movimientos.html', context)
+        
+    except Exception as e:
+        context = {
+            'error': f'Error al cargar el historial: {str(e)}',
+            'historial': [],
+            'acciones_unicas': [],
+            'espacios_unicos': [],
+            'filtros': {},
+            'total_registros': 0
+        }
+        return render(request, 'historial_movimientos.html', context)
+
+def exportar_historial(request):
+    """
+    Vista para exportar el historial a CSV
+    """
+    try:
+        ref = db.reference('historial_asignaciones')
+        historial_data = ref.get()
+        
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="historial_movimientos.csv"'
+        
+        writer = csv.writer(response)
+        writer.writerow(['ID', 'Acción', 'Espacio', 'Fecha', 'Número Parqueo', 'Usuario ID', 'Timestamp'])
+        
+        if historial_data:
+            for key, item in historial_data.items():
+                fecha_formateada = 'Sin fecha'
+                if 'timestamp' in item and item['timestamp']:
+                    try:
+                        fecha_dt = datetime.fromtimestamp(item['timestamp'])
+                        fecha_formateada = fecha_dt.strftime('%Y-%m-%d %H:%M:%S')
+                    except:
+                        fecha_formateada = item.get('fecha', 'Sin fecha')
+                
+                writer.writerow([
+                    key,
+                    item.get('accion', ''),
+                    item.get('espacio_key', ''),
+                    fecha_formateada,
+                    item.get('numero_parqueo', ''),
+                    item.get('user_id', ''),
+                    item.get('timestamp', '')
+                ])
+        
+        return response
+        
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+################################################## FUNCION PARA MOSTRAR LAS TRANSACCIONES #############################################
+def listar_transacciones(request):
+    """
+    Vista para listar todas las transacciones con filtros y paginación
+    """
+    try:
+        filtro_tipo = request.GET.get('tipo', '')
+        filtro_rubro = request.GET.get('rubro', '')
+        filtro_proveedor = request.GET.get('proveedor', '')
+        fecha_inicio = request.GET.get('fecha_inicio', '')
+        fecha_fin = request.GET.get('fecha_fin', '')
+        busqueda = request.GET.get('busqueda', '')
+
+        ref = db.reference('transacciones')
+        transacciones_data = ref.get()
+        
+        transacciones = []
+        proveedores_set = set()
+        rubros_set = set()
+        tipos_set = set()
+        
+        if transacciones_data:
+            for transaccion_id, data in transacciones_data.items():
+                # Agregar ID a los datos
+                data['id'] = transaccion_id
+                
+                if 'fecha' in data:
+                    if isinstance(data['fecha'], str):
+                        data['fecha_formatted'] = data['fecha']
+                    else:
+                        data['fecha_formatted'] = str(data['fecha'])
+                incluir = True
+                
+                if filtro_tipo and data.get('tipo', '') != filtro_tipo:
+                    incluir = False
+                
+                if filtro_rubro and data.get('rubro', '') != filtro_rubro:
+                    incluir = False
+                
+                if filtro_proveedor and data.get('proveedor', '') != filtro_proveedor:
+                    incluir = False
+                
+                if (fecha_inicio or fecha_fin) and incluir:
+                    try:
+                        fecha_str = data.get('fecha', '')
+                        if fecha_str:
+                            fecha_transaccion = None
+                            formatos = ['%d/%m/%Y %H:%M', '%d/%m/%Y', '%Y-%m-%d', '%Y-%m-%d %H:%M:%S']
+                            
+                            for formato in formatos:
+                                try:
+                                    fecha_transaccion = datetime.strptime(fecha_str.split(' ')[0] if ' ' in fecha_str else fecha_str, formato.split(' ')[0])
+                                    break
+                                except:
+                                    continue
+                            
+                            if fecha_transaccion:
+                                if fecha_inicio:
+                                    fecha_ini = datetime.strptime(fecha_inicio, '%Y-%m-%d')
+                                    if fecha_transaccion < fecha_ini:
+                                        incluir = False
+                                
+                                if fecha_fin and incluir:
+                                    fecha_final = datetime.strptime(fecha_fin, '%Y-%m-%d')
+                                    if fecha_transaccion > fecha_final:
+                                        incluir = False
+                    except Exception as e:
+                        print(f"Error procesando fecha: {e}")
+                        pass
+                
+                if busqueda and incluir:
+                    descripcion = data.get('descripcion', '').lower()
+                    if busqueda.lower() not in descripcion:
+                        incluir = False
+                
+                if incluir:
+                    transacciones.append(data)
+                    
+                    if 'proveedor' in data and data['proveedor']:
+                        proveedores_set.add(data['proveedor'])
+                    if 'rubro' in data and data['rubro']:
+                        rubros_set.add(data['rubro'])
+                    if 'tipo' in data and data['tipo']:
+                        tipos_set.add(data['tipo'])
+        
+        transacciones.sort(key=lambda x: x.get('fecha', ''), reverse=True)
+        
+        total_transacciones = len(transacciones)
+        total_ingresos = sum(float(t.get('monto', 0)) for t in transacciones if t.get('tipo') == 'Ingreso')
+        total_egresos = sum(float(t.get('monto', 0)) for t in transacciones if t.get('tipo') == 'Egreso')
+        balance = total_ingresos - total_egresos
+        
+        paginator = Paginator(transacciones, 10)  # 10 transacciones por página
+        page_number = request.GET.get('page')
+        page_obj = paginator.get_page(page_number)
+        
+        context = {
+            'transacciones': page_obj,
+            'total_transacciones': total_transacciones,
+            'total_ingresos': total_ingresos,
+            'total_egresos': total_egresos,
+            'balance': balance,
+            'proveedores': sorted(list(proveedores_set)),
+            'rubros': sorted(list(rubros_set)),
+            'tipos': sorted(list(tipos_set)),
+            'filtro_actual': {
+                'tipo': filtro_tipo,
+                'rubro': filtro_rubro,
+                'proveedor': filtro_proveedor,
+                'fecha_inicio': fecha_inicio,
+                'fecha_fin': fecha_fin,
+                'busqueda': busqueda,
+            }
+        }
+        
+        return render(request, 'transacciones_listar.html', context)
+        
+    except Exception as e:
+        print(f"Error al obtener transacciones: {e}")
+        context = {
+            'transacciones': [],
+            'error': 'Error al cargar las transacciones',
+            'total_transacciones': 0,
+            'total_ingresos': 0,
+            'total_egresos': 0,
+            'balance': 0,
+            'proveedores': [],
+            'rubros': [],
+            'tipos': [],
+            'filtro_actual': {}
+        }
+        return render(request, 'transacciones_listar.html', context)
