@@ -42,12 +42,12 @@ try:
     from firebase_admin import credentials, db as realtime_db
     
     CREDENTIALS_PATH = Path(__file__).resolve().parent.parent / 'config' / 'serviceAccountKey.json'
-    DATABASE_URL = 'https://parkingues-69cfa-default-rtdb.firebaseio.com/'
+    DATABASE_URL = 'https://parkingues-69cfa-default-rtdb.firebaseio.com'
     
     if CREDENTIALS_PATH.exists() and not firebase_admin._apps:
         cred = credentials.Certificate(str(CREDENTIALS_PATH))
         firebase_admin.initialize_app(cred, {'databaseURL': DATABASE_URL})
-        rtdb = realtime_db.reference()
+        rtdb = realtime_db.reference()  
         FIREBASE_ENABLED = True
     else:
         rtdb = None
