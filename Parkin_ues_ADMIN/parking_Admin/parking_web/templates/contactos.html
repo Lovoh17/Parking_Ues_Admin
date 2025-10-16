@@ -1,0 +1,125 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="display-6 fw-bold text-primary-custom mb-2">
+                        <i class="fas fa-users me-3"></i>Creadores del Sistema
+                    </h1>
+                    <p class="text-muted mb-0">Conoce al equipo detrás del desarrollo</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Kevin Israel Rodriguez Rivera -->
+        <div class="col-lg-6">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body text-center p-4">
+                    <div class="mb-4">
+                        <div class="avatar-placeholder rounded-circle d-inline-flex align-items-center justify-content-center bg-primary text-white" 
+                             style="width: 150px; height: 150px; font-size: 48px;">
+                            KR
+                        </div>
+                    </div>
+                    <h3 class="mb-2">Kevin Israel Rodriguez Rivera</h3>
+                    <p class="text-muted mb-3">Desarrollador de Hardware</p>
+                    
+                    <div class="bg-light rounded p-3 mb-3">
+                        <div class="d-flex align-items-center justify-content-center mb-2">
+                            <i class="fas fa-microchip text-primary me-2" style="font-size: 24px;"></i>
+                            <h5 class="mb-0">Área de Especialización</h5>
+                        </div>
+                        <p class="mb-0">Microprogramación y Sistemas Embebidos</p>
+                    </div>
+                    
+                    <div class="text-start">
+                        <h6 class="fw-bold mb-2">Responsabilidades:</h6>
+                        <ul class="list-unstyled">
+                            <li class="mb-2">
+                                <i class="fas fa-check-circle text-success me-2"></i>
+                                Desarrollo de microprogramación
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-check-circle text-success me-2"></i>
+                                Programación de controladores
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-check-circle text-success me-2"></i>
+                                Integración hardware-software
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Rafael Humberto Lino Lovo -->
+        <div class="col-lg-6">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body text-center p-4">
+                    <div class="mb-4">
+                        <div class="avatar-placeholder rounded-circle d-inline-flex align-items-center justify-content-center bg-success text-white" 
+                             style="width: 150px; height: 150px; font-size: 48px;">
+                            RL
+                        </div>
+                    </div>
+                    <h3 class="mb-2">Rafael Humberto Lino Lovo</h3>
+                    <p class="text-muted mb-3">Desarrollador Full Stack</p>
+                    
+                    <div class="bg-light rounded p-3 mb-3">
+                        <div class="d-flex align-items-center justify-content-center mb-2">
+                            <i class="fas fa-laptop-code text-success me-2" style="font-size: 24px;"></i>
+                            <h5 class="mb-0">Área de Especialización</h5>
+                        </div>
+                        <p class="mb-0">Desarrollo de Aplicaciones Web y Móviles</p>
+                    </div>
+                    
+                    <div class="text-start">
+                        <h6 class="fw-bold mb-2">Responsabilidades:</h6>
+                        <ul class="list-unstyled">
+                            <li class="mb-2">
+                                <i class="fas fa-check-circle text-success me-2"></i>
+                                Desarrollo de aplicación web
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-check-circle text-success me-2"></i>
+                                Desarrollo de aplicación móvil
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-check-circle text-success me-2"></i>
+                                Arquitectura del sistema
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sección de información adicional -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body text-center p-4">
+                    <h4 class="mb-3">
+                        <i class="fas fa-lightbulb text-warning me-2"></i>
+                        Sobre el Proyecto
+                    </h4>
+                    <p class="text-muted mb-0">
+                        Este sistema fue desarrollado como un proyecto integral que combina 
+                        microprogramación, desarrollo web y desarrollo móvil, 
+                        demostrando la capacidad de trabajo en equipo y la integración 
+                        de múltiples tecnologías para crear una solución completa.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

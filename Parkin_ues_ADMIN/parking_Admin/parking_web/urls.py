@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import LoginView,listar_transacciones,GestionUsuarioView,historial_movimientos,exportar_historial, logout_view, dashboard,listar_usuarios,detalle_usuario,ReportesRTDBView,gestion_espacios, perfil_admin
+from .views import LoginView,listar_transacciones,GestionUsuarioView,contactos,historial_movimientos,exportar_historial, logout_view, dashboard,listar_usuarios,detalle_usuario,ReportesRTDBView,gestion_espacios, perfil_admin
 
 urlpatterns = [
     path('', dashboard, name='home'),
@@ -19,4 +19,5 @@ urlpatterns = [
     
     # URLs de estacionamientos
     path('estacionamientos/', gestion_espacios, name='listar_estacionamientos'),
+    path('contactos/', contactos, name='contactos'),
 ]

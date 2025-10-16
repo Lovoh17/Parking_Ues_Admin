@@ -1618,3 +1618,7 @@ def listar_transacciones(request):
             'filtro_actual': {}
         }
         return render(request, 'transacciones_listar.html', context)
+    
+    
+def contactos (request):
+    return render(request, 'contactos.html')
